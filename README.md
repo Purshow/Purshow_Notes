@@ -18,8 +18,6 @@ The EN editions were translated by GPT based on the corresponding CN editions.
 (cd MoE/CN && xelatex -shell-escape -interaction=nonstopmode -halt-on-error moe_pdf.tex)
 (cd MoE/EN && xelatex -shell-escape -interaction=nonstopmode -halt-on-error moe_en_pdf.tex)
 
-(cd OPD/CN && xelatex -interaction=nonstopmode -halt-on-error TML_OPD_notes.tex)
-(cd OPD/CN && xelatex -interaction=nonstopmode -halt-on-error TML_OPD_notes.tex)
-(cd OPD/EN && xelatex -interaction=nonstopmode -halt-on-error TML_OPD_notes.tex)
-(cd OPD/EN && xelatex -interaction=nonstopmode -halt-on-error TML_OPD_notes.tex)
+(cd OPD/CN && latexmk -xelatex -interaction=nonstopmode -halt-on-error TML_OPD_notes.tex)
+(cd OPD/EN && latexmk -xelatex -interaction=nonstopmode -halt-on-error TML_OPD_notes.tex)
 ```
