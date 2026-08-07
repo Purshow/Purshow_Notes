@@ -9,13 +9,14 @@ Notes on contemporary MoE configurations and on-policy distillation.
 - `OPD/CN/`: Chinese OPD source and compiled PDF
 - `OPD/EN/`: English OPD source and compiled PDF
 
+The EN editions were translated by GPT based on the corresponding CN editions.
+
 ## Compile
 
 ```bash
-cd MoE/CN
-xelatex -shell-escape -interaction=nonstopmode -halt-on-error moe_pdf.tex
+# Run these commands from the repository root.
+(cd MoE/CN && xelatex -shell-escape -interaction=nonstopmode -halt-on-error moe_pdf.tex)
 
-cd ../../OPD/EN
-xelatex -interaction=nonstopmode -halt-on-error TML_OPD_notes.tex
-xelatex -interaction=nonstopmode -halt-on-error TML_OPD_notes.tex
+(cd OPD/EN && xelatex -interaction=nonstopmode -halt-on-error TML_OPD_notes.tex)
+(cd OPD/EN && xelatex -interaction=nonstopmode -halt-on-error TML_OPD_notes.tex)
 ```
