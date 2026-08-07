@@ -1,0 +1,33 @@
+\documentclass[UTF8,a4paper,fontset=fandol]{ctexart}
+\usepackage[landscape,margin=1.25cm]{geometry}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{etoolbox}
+\usepackage[
+  fencedCode,
+  pipeTables,
+  texMathDollars,
+  texMathSingleBackslash,
+]{markdown}
+\usepackage{microtype}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.45em}
+\begin{document}
+\makeatletter
+% Use wrapping paragraph columns for the wide model-comparison table.
+\def\markdownLaTeXReadAlignments#1#2#3#4#5#6#7{%
+  \markdownLaTeXTableAlignment={%
+    @{}>{\raggedright\arraybackslash}p{0.11\linewidth}%
+    >{\raggedright\arraybackslash}p{0.09\linewidth}%
+    >{\raggedright\arraybackslash}p{0.13\linewidth}%
+    >{\raggedright\arraybackslash}p{0.20\linewidth}%
+    >{\raggedright\arraybackslash}p{0.10\linewidth}%
+    >{\raggedright\arraybackslash}p{0.09\linewidth}%
+    >{\raggedright\arraybackslash}p{0.18\linewidth}@{}%
+  }%
+}
+\makeatother
+\AtBeginEnvironment{tabular}{\footnotesize\renewcommand{\arraystretch}{1.25}\setlength{\extrarowheight}{1.5pt}\setlength{\tabcolsep}{2pt}}
+\markdownInput{moe.md}
+\end{document}

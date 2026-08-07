@@ -1,0 +1,749 @@
+\documentclass[11pt,a4paper,fontset=fandol]{ctexart}
+
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{microtype}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=blue,
+    citecolor=blue
+}
+
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    columns=fullflexible,
+    keepspaces=true
+}
+
+\setlength{\parindent}{2em}
+\setlength{\parskip}{0.4em}
+\renewcommand{\arraystretch}{1.25}
+
+\title{On Policy Distillation Notes}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\section{符号定义}
+
+\begin{itemize}[leftmargin=2em]
+    \item \(x=(x_1,\ldots,x_T)\)：学生生成的完整序列。
+    \item \(x_{1..t}\)：生成到第 \(t\) 个 token 时的前缀。
+    \item \(x_{t+1}\)：下一 token。
+    \item \(\pi_\theta\)：学生模型。
+    \item \(\pi_{\text{teacher}}\)：固定的教师模型。
+    \item \(\theta\)：学生模型参数。
+    \item \(\gamma\)：未来 KL 的折扣因子。
+    \item \(\beta\)：代码中的 \texttt{kl\_penalty\_coef}。
+\end{itemize}
+
+此外还涉及两个新符号用于重要性采样：
+
+\begin{itemize}[leftmargin=2em]
+    \item \(q\)：真正生成 rollout 的 sampler policy。
+    \item \(p_\theta\)：执行训练 forward 时的 learner policy。
+\end{itemize}
+
+理想的严格 on-policy 情况下两者跟 \(\pi_\theta\) 应该都相同；但在实际系统中，rollout 与训练之间通常仍会存在偏差，例如训推Infra等不同，以及复用同一批 rollout 数据进行多次参数更新时，learner 已逐步偏离生成该数据的 sampler。此外，现在有不少infra会通过重要型采样来传 RL 梯度。
+\section{从每个 token 的反向 KL 开始}
+
+定义固定前缀 \(x_{1..t}\) 下，学生到教师的下一 token 反向 KL：
+
+\[
+\boxed{
+\mathrm{KL}\left(\pi_\theta\|\pi_{\text{teacher}}\right)
+=
+\mathbb E_{x\sim\pi_\theta}
+\left[
+\log \pi_\theta(x_{t+1}|x_{1..t})
+-
+\log \pi_{\text{teacher}}(x_{t+1}|x_{1..t})
+\right]
+}
+\]
+
+更严格地展开为全词表求和：
+
+\[
+\begin{aligned}
+D_t(x_{1..t})
+&=
+\sum_{x_{t+1}}
+\pi_\theta(x_{t+1}|x_{1..t})\\
+&\qquad\cdot
+\left[
+\log\pi_\theta(x_{t+1}|x_{1..t})
+-
+\log\pi_{\text{teacher}}(x_{t+1}|x_{1..t})
+\right].
+\end{aligned}
+\]
+
+它比较的是：
+
+\[
+\pi_\theta(\cdot|x_{1..t})
+\quad\text{与}\quad
+\pi_{\text{teacher}}(\cdot|x_{1..t}),
+\]
+
+即同一个学生访问到的前缀下，两个下一 token 条件分布的反向 KL。
+
+为简化记号，定义单 token 的采样 KL：
+
+\[
+d_t
+=
+\log\pi_\theta(x_{t+1}|x_{1..t})
+-
+\log\pi_{\text{teacher}}(x_{t+1}|x_{1..t}).
+\]
+
+\section{全词表反向 KL 如何得到最终梯度}
+
+固定 \(x_{1..t}\)，对 \(D_t\) 求梯度：
+
+\[
+\begin{aligned}
+\nabla_\theta D_t
+&=
+\sum_{x_{t+1}}
+\nabla_\theta\pi_\theta(x_{t+1}|x_{1..t})\,d_t\\
+&\quad+
+\sum_{x_{t+1}}
+\pi_\theta(x_{t+1}|x_{1..t})
+\nabla_\theta\log\pi_\theta(x_{t+1}|x_{1..t}).
+\end{aligned}
+\]
+
+使用对数求导：
+
+\[
+\nabla_\theta\pi_\theta
+=
+\pi_\theta\nabla_\theta\log\pi_\theta,
+\]
+
+得到：
+
+\[
+\nabla_\theta D_t
+=
+\mathbb E_{x_{t+1}\sim\pi_\theta}
+\left[
+(d_t+1)
+\nabla_\theta\log\pi_\theta(x_{t+1}|x_{1..t})
+\right].
+\]
+
+其中：
+
+\[
+\begin{aligned}
+\mathbb E_{\pi_\theta}
+\left[
+\nabla_\theta\log\pi_\theta
+\right]
+&=
+\sum_{x_{t+1}}
+\pi_\theta(x_{t+1}|x_{1..t})
+\nabla_\theta\log\pi_\theta(x_{t+1}|x_{1..t})\\
+&=
+\sum_{x_{t+1}}
+\nabla_\theta\pi_\theta(x_{t+1}|x_{1..t})\\
+&=
+\nabla_\theta 1\\
+&=0.
+\end{aligned}
+\]
+
+所以 \(+1\) 在期望中消失：
+
+\[
+\boxed{
+\nabla_\theta D_t
+=
+\mathbb E_{x_{t+1}\sim\pi_\theta}
+\left[
+d_t
+\nabla_\theta\log\pi_\theta(x_{t+1}|x_{1..t})
+\right]
+}
+\]
+
+也就是：
+
+\[
+\boxed{
+\nabla_\theta D_t
+=
+\mathbb E_{x_{t+1}\sim\pi_\theta}
+\left[
+\left(
+\log\pi_\theta(x_{t+1}|x_{1..t})
+-
+\log\pi_{\text{teacher}}(x_{t+1}|x_{1..t})
+\right)
+\nabla_\theta\log\pi_\theta(x_{t+1}|x_{1..t})
+\right].
+}
+\]
+
+这就是 OPD 最核心的 token-level policy-gradient 形式。
+
+\section{sampled tokens 如何估计全词表梯度}
+
+由于直接使用全词表做反向 KL 太贵了，目前也只有 DeepSeek v4 使用，
+
+大家一般会使用 sampled tokens 或者 topk 进行估计。下面先证明 \(K\) 个 sampled tokens 的 Monte Carlo 平均是无偏的，然后再看现在实践中常用的 \(K=1\) 特例。
+
+第三节最后得到的是：
+
+\[
+\boxed{
+\nabla_\theta D_t
+=
+\mathbb E_{x_{t+1}\sim\pi_\theta}
+\left[
+d_t
+\nabla_\theta\log\pi_\theta(x_{t+1}|x_{1..t})
+\right].
+}
+\]
+
+把这个期望重新展开成全词表求和：
+
+\[
+\begin{aligned}
+\nabla_\theta D_t
+&=
+\sum_{x_{t+1}}
+\pi_\theta(x_{t+1}|x_{1..t})\\
+&\qquad\cdot
+\left[
+\left(
+\log\pi_\theta(x_{t+1}|x_{1..t})
+-
+\log\pi_{\text{teacher}}(x_{t+1}|x_{1..t})
+\right)
+\nabla_\theta\log\pi_\theta(x_{t+1}|x_{1..t})
+\right].
+\end{aligned}
+\]
+
+也就是说，真实梯度需要枚举每个可能的下一 token，并用学生概率
+
+\[
+\pi_\theta(x_{t+1}|x_{1..t})
+\]
+
+作为权重加权求和。
+
+如果不枚举全词表，而是从学生分布中采样 \(K\) 个 token：
+
+\[
+x_{t+1}^{(1)},\ldots,x_{t+1}^{(K)}
+\sim
+\pi_\theta(\cdot|x_{1..t}),
+\]
+
+其中第 \(k\) 个样本对应：
+
+\[
+d_t^{(k)}
+=
+\log\pi_\theta(x_{t+1}^{(k)}|x_{1..t})
+-
+\log\pi_{\text{teacher}}(x_{t+1}^{(k)}|x_{1..t}).
+\]
+
+对第 \(k\) 个 sampled token，可以构造一个单样本梯度估计：
+
+\[
+\hat g^{(k)}
+=
+d_t^{(k)}
+\nabla_\theta
+\log\pi_\theta(x_{t+1}^{(k)}|x_{1..t}).
+\]
+
+然后对 \(K\) 个样本取平均：
+
+\[
+\boxed{
+\hat g_K
+=
+\frac1K
+\sum_{k=1}^{K}
+\hat g^{(k)}
+=
+\frac1K
+\sum_{k=1}^{K}
+d_t^{(k)}
+\nabla_\theta
+\log\pi_\theta(x_{t+1}^{(k)}|x_{1..t}).
+}
+\]
+
+先看单个 \(\hat g^{(k)}\) 的期望。因为每个 \(x_{t+1}^{(k)}\) 都来自
+
+\[
+\pi_\theta(\cdot|x_{1..t}),
+\]
+
+所以：
+
+\[
+\begin{aligned}
+\mathbb E[\hat g^{(k)}]
+&=
+\sum_{x_{t+1}^{(k)}}
+\pi_\theta(x_{t+1}^{(k)}|x_{1..t})\\
+&\qquad\cdot
+\left[
+\left(
+\log\pi_\theta(x_{t+1}^{(k)}|x_{1..t})
+-
+\log\pi_{\text{teacher}}(x_{t+1}^{(k)}|x_{1..t})
+\right)
+\nabla_\theta
+\log\pi_\theta(x_{t+1}^{(k)}|x_{1..t})
+\right]\\
+&=
+\nabla_\theta D_t.
+\end{aligned}
+\]
+
+因此 \(K\) 个样本平均后的期望为：
+
+\[
+\begin{aligned}
+\mathbb E[\hat g_K]
+&=
+\frac1K
+\sum_{k=1}^{K}
+\mathbb E
+\left[
+d_t^{(k)}
+\nabla_\theta
+\log\pi_\theta(x_{t+1}^{(k)}|x_{1..t})
+\right]\\
+&=
+\frac1K
+\sum_{k=1}^{K}
+\nabla_\theta D_t\\
+&=
+\nabla_\theta D_t.
+\end{aligned}
+\]
+
+所以 \(K\) 个 sampled tokens 的平均是全词表梯度的无偏 Monte Carlo 估计。
+
+现在实践里常取 \(K=1\)。此时估计量退化为：
+
+\[
+\boxed{
+\hat g_1
+=
+d_t
+\nabla_\theta
+\log\pi_\theta(x_{t+1}|x_{1..t}),
+\qquad
+x_{t+1}\sim\pi_\theta.
+}
+\]
+
+它仍然无偏，但因为只用一个 sampled token，方差比更大的 \(K\) 更高。
+
+我们的上述推导在工程实现上还漏掉了一个很重要的事情：sampled-token estimator 不能直接把 sampled KL 当作普通 loss 反传，而需要 stop-gradient。
+
+实际上我在一开始推导的时候也完全忘掉了，是看到了官方代码才发现有些不对劲儿（
+
+采样之后，
+
+\[
+x_{t+1}\sim\pi_\theta,
+\]
+
+这个 \(x_{t+1}\) 在自动微分看来只是一个固定 token；采样概率本身没有显式留在计算图里。因此工程实现要复现的不是 \(\nabla_\theta d_t\)，而是上一节推导出的 score-function 梯度估计器：
+
+\[
+\hat g_K
+=
+\frac1K
+\sum_{k=1}^{K}
+d_t^{(k)}
+\nabla_\theta
+\log\pi_\theta(x_{t+1}^{(k)}|x_{1..t}).
+\]
+
+实现这个估计器的代理损失应写成：
+
+\[
+\boxed{
+\mathcal L_{\mathrm{MC}}
+=
+\frac1K
+\sum_{k=1}^{K}
+\operatorname{sg}\!\left[d_t^{(k)}\right]
+\log\pi_\theta(x_{t+1}^{(k)}|x_{1..t})
+}
+\]
+
+其中 \(\operatorname{sg}\) 表示 stop-gradient。它只把 \(d_t^{(k)}\) 当成数值权重，让自动微分只穿过后面的 score function：
+
+\[
+\nabla_\theta \mathcal L_{\mathrm{MC}}
+=
+\frac1K
+\sum_{k=1}^{K}
+\operatorname{sg}\!\left[d_t^{(k)}\right]
+\nabla_\theta
+\log\pi_\theta(x_{t+1}^{(k)}|x_{1..t}).
+\]
+
+如果不加 stop-gradient，写成 \(d_t\log\pi_\theta(x_{t+1}|x_{1..t})\)，自动微分会多出：
+
+\[
+\log\pi_\theta(x_{t+1}|x_{1..t})\nabla_\theta d_t,
+\]
+
+这里和全词表 KL 的区别是：全词表方法没有离散采样，完整目标
+
+\[
+\mathcal L_t^{\text{full}}
+=
+\sum_{x_{t+1}}
+\pi_\theta(x_{t+1}|x_{1..t})
+\left[
+\log\pi_\theta(x_{t+1}|x_{1..t})
+-
+\log\pi_{\text{teacher}}(x_{t+1}|x_{1..t})
+\right]
+\]
+
+已经把每个 token 的概率权重 \(\pi_\theta(x_{t+1}|x_{1..t})\) 显式写在求和里，所以可以直接自动微分整个真实目标，不需要 stop-gradient。
+
+\section{sampled-token 与全词表 loss 的区别}
+
+这两个方法估计的是同一个固定前缀条件 KL，但实现方式不同。
+
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.22\textwidth}
+                  >{\raggedright\arraybackslash}p{0.34\textwidth}
+                  >{\raggedright\arraybackslash}p{0.34\textwidth}}
+\toprule
+方面 & 全词表 loss & sampled-token loss \\
+\midrule
+下一 token & 枚举所有词表 token & 只使用实际采样 token \\
+目标 & 精确计算条件 KL & Monte Carlo 估计条件 KL 梯度 \\
+教师输出 & 完整词表概率或 logits & 被采样 token 的 logprob \\
+方差 & 对当前前缀无采样方差 & \(K=1\) 时方差较大 \\
+计算量 & 与词表大小相关 & 每个位置只需 sampled token 的教师 logprob \\
+自动微分 & 直接对完整 KL 目标反传 & 使用 policy-gradient surrogate \\
+stop-grad & 不需要特殊 stop-grad & \(d_t\) 作为 advantage 时需要 stop-grad \\
+\bottomrule
+\end{longtable}
+
+\section{未来 Token 的影响与折扣因子}
+
+到这里为止，我们一直在固定前缀 \(x_{1..t}\) 下分析下一 token 的条件 KL。但实际上，我们会碰到一个很常见的问题：
+
+当前 token 改变后，后面会访问到的前缀也会改变；这些未来位置上的 KL 要不要归因给当前 token？
+
+如果把整条 rollout 都看作学生模型生成的样本，一个自然的序列级目标是沿轨迹累加每个位置的 KL：
+
+\[
+\mathcal J(\theta)
+=
+\mathbb E_{x\sim\pi_\theta}
+\left[
+\sum_{t=0}^{T-1}d_t
+\right],
+\]
+
+其中：
+
+\[
+d_t
+=
+\log\pi_\theta(x_{t+1}|x_{1..t})
+-
+\log\pi_{\text{teacher}}(x_{t+1}|x_{1..t}).
+\]
+
+这个目标也可以理解为完整序列分布上的反向 KL，因为：
+
+\[
+\log\pi_\theta(x)
+=
+\sum_t
+\log\pi_\theta(x_{t+1}|x_{1..t}),
+\]
+
+教师同理。
+
+对 \(\mathcal J\) 求梯度：
+
+\[
+\begin{aligned}
+\nabla_\theta\mathcal J
+=
+\mathbb E_{x\sim\pi_\theta}
+\Bigg[
+&
+\left(
+\sum_t\nabla_\theta
+\log\pi_\theta(x_{t+1}|x_{1..t})
+\right)
+\left(
+\sum_k d_k
+\right)\\
+&+
+\sum_k
+\nabla_\theta
+\log\pi_\theta(x_{k+1}|x_{1..k})
+\Bigg].
+\end{aligned}
+\]
+
+最后一项的期望为零。再利用因果性，第 \(t\) 个 token 的 score 不需要乘过去的 \(d_k,\;k<t\)，得到：
+
+\[
+\boxed{
+\nabla_\theta\mathcal J
+=
+\mathbb E_{x\sim\pi_\theta}
+\left[
+\sum_{t=0}^{T-1}
+\left(
+\sum_{k=t}^{T-1}d_k
+\right)
+\nabla_\theta
+\log\pi_\theta(x_{t+1}|x_{1..t})
+\right].
+}
+\]
+
+因此，严格的序列级反向 KL 梯度中，第 \(t\) 个 token 的权重应该是：
+
+\[
+d_t+d_{t+1}+\cdots+d_{T-1}.
+\]
+
+原因是当前 token 不仅影响当前 KL，还会改变后面访问到的所有前缀。
+
+因此我们定义折扣未来 KL：
+
+\[
+G_t^{(\gamma)}
+=
+\sum_{k=t}^{T-1}
+\gamma^{k-t}d_k.
+\]
+
+即：
+
+\[
+G_t^{(\gamma)}
+=
+d_t+\gamma d_{t+1}+\gamma^2d_{t+2}+\cdots.
+\]
+
+对应的 KL advantage 为：
+
+\[
+A_t^{(\gamma)}
+=
+-\beta G_t^{(\gamma)}.
+\]
+
+不同 \(\gamma\) 的含义如下。
+
+\subsection{\texorpdfstring{\(\gamma=1\)}{gamma=1}：完整序列信用分配}
+
+\[
+G_t^{(1)}
+=
+d_t+d_{t+1}+\cdots+d_{T-1}.
+\]
+
+这对应序列级目标下的无折扣信用分配。
+
+\subsection{\texorpdfstring{\(0<\gamma<1\)}{0<gamma<1}：部分未来信用分配}
+
+\[
+G_t^{(\gamma)}
+=
+d_t+\gamma d_{t+1}+\gamma^2d_{t+2}+\cdots.
+\]
+
+保留未来影响，但越远的 KL 权重越小。
+
+\subsection{\texorpdfstring{\(\gamma=0\)}{gamma=0}：只看即时 token}
+
+\[
+\boxed{
+G_t^{(0)}=d_t.
+}
+\]
+
+当前 token 只根据当前位置的教师信号更新，不承担未来 KL。这也是目前的默认选择。主要是因为 TML 官方博客里有提及： 正折扣因子在数学上更完整，但实验中没有观察到性能改善，因此为了简单，主动使用零折扣。
+
+\section{OPD 的最终统一公式}
+
+\subsection{Rollout}
+
+\[
+x_{t+1}
+\sim
+q(\cdot|x_{1..t}).
+\]
+
+\subsection{sampled reverse KL}
+
+\[
+d_t
+=
+\log q(x_{t+1}|x_{1..t})
+-
+\log\pi_{\text{teacher}}(x_{t+1}|x_{1..t}).
+\]
+
+\subsection{折扣未来 KL}
+
+\[
+G_t^{(\gamma)}
+=
+\sum_{k=t}^{T-1}
+\gamma^{k-t}d_k.
+\]
+
+\subsection{advantage}
+
+\[
+\boxed{
+A_t
+=
+-\beta\operatorname{stopgrad}
+\left[
+G_t^{(\gamma)}
+\right].
+}
+\]
+
+\subsection{importance ratio}
+
+\[
+\boxed{
+\rho_t(\theta)
+=
+\frac{
+p_\theta(x_{t+1}|x_{1..t})
+}{
+q(x_{t+1}|x_{1..t})
+}.
+}
+\]
+
+\subsection{Tinker loss}
+
+\[
+\boxed{
+\mathcal L_{\mathrm{OPD}}
+=
+-\sum_t
+\rho_t(\theta)A_t.
+}
+\]
+
+\subsection{梯度}
+
+\[
+\boxed{
+\nabla_\theta\mathcal L_{\mathrm{OPD}}
+=
+\beta
+\sum_t
+\rho_t(\theta)
+G_t^{(\gamma)}
+\nabla_\theta
+\log p_\theta(x_{t+1}|x_{1..t}).
+}
+\]
+
+默认：
+
+\[
+\gamma=0,
+\]
+
+所以：
+
+\[
+G_t^{(0)}=d_t,
+\]
+
+最终为：
+
+\[
+\boxed{
+\nabla_\theta\mathcal L_{\mathrm{OPD}}
+=
+\beta
+\sum_t
+\frac{p_\theta(x_{t+1}|x_{1..t})}
+{q(x_{t+1}|x_{1..t})}
+\left[
+\log q(x_{t+1}|x_{1..t})
+-
+\log\pi_{\text{teacher}}(x_{t+1}|x_{1..t})
+\right]
+\nabla_\theta
+\log p_\theta(x_{t+1}|x_{1..t}).
+}
+\]
+
+严格 on-policy 时：
+
+\[
+p_\theta=q=\pi_\theta,
+\]
+
+化简为：
+
+\[
+\boxed{
+\nabla_\theta\mathcal L_{\mathrm{OPD}}
+=
+\beta
+\sum_t
+\left[
+\log\pi_\theta(x_{t+1}|x_{1..t})
+-
+\log\pi_{\text{teacher}}(x_{t+1}|x_{1..t})
+\right]
+\nabla_\theta
+\log\pi_\theta(x_{t+1}|x_{1..t}).
+}
+\]
+
+
+
+
+\end{document}
