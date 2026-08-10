@@ -1,0 +1,159 @@
+\documentclass[11pt,a4paper,fontset=none]{ctexart}
+
+\usepackage[a4paper,margin=22mm,headheight=15pt]{geometry}
+\usepackage{fontspec}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{hyperref}
+\usepackage{bookmark}
+\usepackage{fvextra}
+\usepackage{newunicodechar}
+\usepackage[
+  fencedCode,
+  smartEllipses,
+  strikeThrough,
+  texMathDollars,
+  texMathDoubleBackslash,
+  texMathSingleBackslash
+]{markdown}
+
+\setmainfont[
+  Path=/usr/local/texlive/2026/texmf-dist/fonts/opentype/public/tex-gyre/,
+  UprightFont=texgyrepagella-regular.otf,
+  BoldFont=texgyrepagella-bold.otf,
+  ItalicFont=texgyrepagella-italic.otf,
+  BoldItalicFont=texgyrepagella-bolditalic.otf
+]{texgyrepagella-regular.otf}
+\setsansfont[
+  Path=/usr/local/texlive/2026/texmf-dist/fonts/opentype/public/tex-gyre/,
+  UprightFont=texgyreheros-regular.otf,
+  BoldFont=texgyreheros-bold.otf,
+  ItalicFont=texgyreheros-italic.otf,
+  BoldItalicFont=texgyreheros-bolditalic.otf
+]{texgyreheros-regular.otf}
+\setmonofont[
+  Path=/usr/local/texlive/2026/texmf-dist/fonts/opentype/public/lm/,
+  Scale=0.82
+]{lmmono10-regular.otf}
+\setCJKmainfont[
+  Path=/System/Library/Fonts/Supplemental/,
+  FontIndex=6,
+  BoldFont=Songti.ttc,
+  BoldFeatures={FontIndex=1}
+]{Songti.ttc}
+\setCJKsansfont[
+  Path=/System/Library/Fonts/,
+  FontIndex=1,
+  BoldFont={STHeiti Medium.ttc},
+  BoldFeatures={FontIndex=1}
+]{STHeiti Light.ttc}
+\setCJKmonofont[Path=/System/Library/Fonts/,FontIndex=1]{STHeiti Light.ttc}
+\newunicodechar{①}{\textcircled{1}}
+\newunicodechar{②}{\textcircled{2}}
+\newunicodechar{–}{--}
+
+\definecolor{wamblue}{HTML}{174A7E}
+\definecolor{wamgray}{HTML}{5D6773}
+\definecolor{wamlink}{HTML}{1769AA}
+\definecolor{codebg}{HTML}{F4F6F8}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=wamblue,
+  urlcolor=wamlink,
+  citecolor=wamblue,
+  pdftitle={World Action Model: From Video Generation Priors to Robot Actions}
+}
+
+\ctexset{
+  section={format=\Large\bfseries\sffamily\color{wamblue},beforeskip=1.8ex,afterskip=1.2ex},
+  subsection={format=\Large\bfseries\sffamily\color{wamblue},beforeskip=1.6ex,afterskip=0.9ex},
+  subsubsection={format=\large\bfseries\sffamily\color{wamgray},beforeskip=1.4ex,afterskip=0.7ex}
+}
+
+\setlength{\parindent}{2em}
+\setlength{\parskip}{0.35em}
+\linespread{1.18}
+\setlist{itemsep=0.25em,topsep=0.45em,leftmargin=2.4em}
+\setcounter{tocdepth}{3}
+\setcounter{secnumdepth}{0}
+\renewcommand{\contentsname}{Contents}
+\graphicspath{{./}{assets/}}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\sffamily\color{wamgray} World Action Model}
+\fancyhead[R]{\small\sffamily\color{wamgray} From Video Priors to Robot Actions}
+\fancyfoot[C]{\small\sffamily\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{
+  breaklines=true,
+  breakanywhere=true,
+  fontsize=\small,
+  frame=single,
+  framesep=6pt,
+  rulecolor=\color{codebg}
+}
+
+\ExplSyntaxOn
+\cs_generate_variant:Nn \tl_replace_all:Nnn { Nxx }
+\cs_new_protected:Npn \wamincludemarkdownimage #1
+  {
+    \tl_set:Nn \l_tmpa_tl { #1 }
+    \tl_replace_all:Nxx \l_tmpa_tl
+      { \char_generate:nn { 37 } { 12 } 20 }
+      { \c_space_tl }
+    \includegraphics
+      [width=0.96\linewidth,height=0.72\textheight,keepaspectratio]
+      { \tl_use:N \l_tmpa_tl }
+  }
+\ExplSyntaxOff
+
+\markdownSetup{
+  rendererPrototypes={
+    image={%
+      \par\vspace{0.1em}
+      {\centering
+        \wamincludemarkdownimage{#3}%
+        \par}%
+      \vspace{0.1em}
+    },
+    inputVerbatim={%
+      \VerbatimInput[
+        breaklines=true,
+        breakanywhere=true,
+        fontsize=\small,
+        frame=single,
+        framesep=6pt,
+        rulecolor=\color{codebg}
+      ]{#1}%
+    }
+  }
+}
+
+\begin{document}
+
+\begin{titlepage}
+  \centering
+  \vspace*{0.20\textheight}
+  {\Huge\bfseries\sffamily\color{wamblue} World Action Model\par}
+  \vspace{1.2em}
+  {\LARGE\sffamily From Video Generation Priors to Robot Actions\par}
+  \vspace{2.2em}
+  {\color{wamgray}\rule{0.54\textwidth}{0.6pt}\par}
+  \vfill
+  {\large\sffamily Purshow' Notes\par}
+  \vspace*{0.10\textheight}
+\end{titlepage}
+
+\tableofcontents
+\clearpage
+
+\markdownInput{wam.md}
+
+\end{document}
