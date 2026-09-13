@@ -1,0 +1,123 @@
+% Residual connection notes; style adapted from Attention/CN/pdf-header.tex.
+\usepackage{fontspec}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{fvextra}
+\usepackage{etoolbox}
+\usepackage{pdflscape}
+
+\setmainfont[
+  Path=/usr/local/texlive/2026/texmf-dist/fonts/opentype/public/tex-gyre/,
+  UprightFont=texgyrepagella-regular.otf,
+  BoldFont=texgyrepagella-bold.otf,
+  ItalicFont=texgyrepagella-italic.otf,
+  BoldItalicFont=texgyrepagella-bolditalic.otf
+]{texgyrepagella-regular.otf}
+\setsansfont[
+  Path=/usr/local/texlive/2026/texmf-dist/fonts/opentype/public/tex-gyre/,
+  UprightFont=texgyreheros-regular.otf,
+  BoldFont=texgyreheros-bold.otf,
+  ItalicFont=texgyreheros-italic.otf,
+  BoldItalicFont=texgyreheros-bolditalic.otf
+]{texgyreheros-regular.otf}
+\setmonofont[
+  Path=/usr/local/texlive/2026/texmf-dist/fonts/opentype/google/roboto/,
+  UprightFont=RobotoMono-Regular.otf,
+  BoldFont=RobotoMono-Bold.otf,
+  ItalicFont=RobotoMono-Italic.otf,
+  BoldItalicFont=RobotoMono-BoldItalic.otf,
+  Scale=0.82
+]{RobotoMono-Regular.otf}
+\setCJKmainfont[
+  Path=/System/Library/Fonts/Supplemental/,
+  FontIndex=6,
+  BoldFont=Songti.ttc,
+  BoldFeatures={FontIndex=1}
+]{Songti.ttc}
+\setCJKsansfont[
+  Path=/System/Library/Fonts/,
+  FontIndex=1,
+  BoldFont={STHeiti Medium.ttc},
+  BoldFeatures={FontIndex=1}
+]{STHeiti Light.ttc}
+\setCJKmonofont[Path=/System/Library/Fonts/,FontIndex=1]{STHeiti Light.ttc}
+
+\definecolor{attentionblue}{HTML}{174A7E}
+\definecolor{attentiongray}{HTML}{5D6773}
+\definecolor{attentionlink}{HTML}{1769AA}
+\definecolor{codebg}{HTML}{F4F6F8}
+
+\AtBeginDocument{%
+  \hypersetup{
+    linkcolor=attentionblue,
+    urlcolor=attentionlink,
+    citecolor=attentionblue,
+    pdftitle={Beyond Residual Connection}
+  }%
+}
+
+\ctexset{
+  section={format=\LARGE\bfseries\sffamily\color{attentionblue},beforeskip=1.8ex,afterskip=1.2ex},
+  subsection={format=\Large\bfseries\sffamily\color{attentionblue},beforeskip=1.6ex,afterskip=0.9ex},
+  subsubsection={format=\large\bfseries\sffamily\color{attentiongray},beforeskip=1.4ex,afterskip=0.7ex}
+}
+
+\setlength{\parindent}{2em}
+\setlength{\parskip}{0.35em}
+\linespread{1.18}
+\setlist{itemsep=0.25em,topsep=0.45em,leftmargin=2.4em}
+\setcounter{tocdepth}{2}
+\setcounter{secnumdepth}{0}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\sffamily\color{attentiongray} Residual Connections}
+\fancyhead[R]{\small\sffamily\color{attentiongray} Purshow’ Notes}
+\fancyfoot[C]{\small\sffamily\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+
+
+\usepackage{caption}
+\captionsetup{font=small,labelfont=bf}
+\clearcaptionsetup{table} % Overview has no caption; clear Pandoc defaults.
+\usepackage{float}
+\floatplacement{figure}{H}
+\AtBeginDocument{\renewcommand{\figurename}{图}}
+
+% A single opening page: article title above an automatically linked contents.
+\makeatletter
+\renewcommand*\l@subsection{\@dottedtocline{2}{0em}{0em}}
+\renewcommand*\l@subsubsection{\@dottedtocline{3}{1.6em}{0em}}
+\makeatother
+\newcommand{\NotesCover}[1]{%
+  \pagenumbering{roman}%
+  \thispagestyle{empty}%
+  \vspace*{0mm}%
+  {\centering
+    \sffamily\bfseries\color{attentionblue}%
+    \fontsize{26pt}{36pt}\selectfont #1\par
+  }%
+  \vspace{4mm}%
+  {\color{attentionblue}\noindent\rule{\linewidth}{0.6pt}\par}%
+  \vspace{4mm}%
+  \begingroup
+    \setlength{\parindent}{0pt}%
+    \setlength{\parskip}{0.6em}%
+    \tableofcontents
+  \endgroup
+}
+\newcommand{\NotesCoverEnd}{%
+  \clearpage
+  \pagenumbering{arabic}%
+}
+
+% Compact wrapping overview table, following Attention and MoE notes.
+\newcommand{\OverviewTableStyle}{%
+  \fontsize{7.5pt}{8.8pt}\selectfont
+  \setlength{\tabcolsep}{4pt}%
+  \renewcommand{\arraystretch}{1.2}%
+  \setlength{\extrarowheight}{6pt}%
+  \setlength{\LTpre}{30pt}%
+  \setlength{\LTpost}{0pt}%
+  \setlength{\parskip}{0pt}%
+}
