@@ -10,11 +10,13 @@ Personal research notes.
 - `MoE/CN`, `MoE/EN`: Mixture of Experts
 - `OPD/CN`, `OPD/EN`: On-Policy Distillation
 - `WAM/CN`, `WAM/EN`: World Action Models
+- `YOCO/CN`, `YOCO/EN`: YOCO: Cross-Layer KV Sharing
 
 ## Compile
 
 ```bash
 bash Beyond_Residual/build.sh
+bash YOCO/build.sh
 (cd Attention/CN && xelatex -interaction=nonstopmode -halt-on-error Attention.tex && xelatex -interaction=nonstopmode -halt-on-error Attention.tex)
 (cd Attention/EN && xelatex -interaction=nonstopmode -halt-on-error Attention_EN.tex && xelatex -interaction=nonstopmode -halt-on-error Attention_EN.tex)
 (cd MoE/CN && xelatex -shell-escape -interaction=nonstopmode -halt-on-error MoE_CN.tex)
