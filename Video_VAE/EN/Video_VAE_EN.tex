@@ -1,0 +1,1488 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\PassOptionsToPackage{dvipsnames,svgnames,x11names}{xcolor}
+\documentclass[
+  11pt,
+  a4paper,
+]{article}
+\usepackage{xcolor}
+\usepackage[landscape,margin=18mm,headheight=15pt]{geometry}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{longtable,booktabs,array}
+\usepackage{caption}
+\captionsetup[table]{skip=6pt}
+\newcounter{none} % for unnumbered tables
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{fontspec}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{etoolbox}
+\usepackage{xurl}
+\usepackage{needspace}
+\setmainfont[Path=/usr/local/texlive/2026/texmf-dist/fonts/opentype/public/tex-gyre/,UprightFont=texgyrepagella-regular.otf,BoldFont=texgyrepagella-bold.otf,ItalicFont=texgyrepagella-italic.otf,BoldItalicFont=texgyrepagella-bolditalic.otf]{texgyrepagella-regular.otf}
+\setsansfont[Path=/usr/local/texlive/2026/texmf-dist/fonts/opentype/public/tex-gyre/,UprightFont=texgyreheros-regular.otf,BoldFont=texgyreheros-bold.otf,ItalicFont=texgyreheros-italic.otf,BoldItalicFont=texgyreheros-bolditalic.otf]{texgyreheros-regular.otf}
+\setmonofont[Path=/usr/local/texlive/2026/texmf-dist/fonts/opentype/SIL/jetbrainsmono-otf/,UprightFont=JetBrainsMono-Regular.otf,BoldFont=JetBrainsMono-Bold.otf,ItalicFont=JetBrainsMono-Italic.otf,BoldItalicFont=JetBrainsMono-BoldItalic.otf,Scale=0.85]{JetBrainsMono-Regular.otf}
+\definecolor{notesblue}{HTML}{174A7E}
+\definecolor{notesgray}{HTML}{5D6773}
+\definecolor{noteslink}{HTML}{1769AA}
+\AtBeginDocument{\hypersetup{linkcolor=noteslink,urlcolor=noteslink,pdftitle={VAEs for Video Generation Models},pdfsubject={Compression, architecture, causality, and chunked decoding}}}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em}
+\linespread{1.06}
+\setcounter{secnumdepth}{0}
+\setlist{leftmargin=2em,itemsep=0.2em}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\sffamily\color{notesgray}Video VAE / Architecture Notes}
+\fancyhead[R]{\small\sffamily\color{notesgray}Purshow\textquoteright{}s Notes}
+\fancyfoot[R]{\small\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+\newcommand{\NotesTitle}[1]{{\sffamily\bfseries\color{notesblue}\fontsize{25}{32}\selectfont #1\par}\vspace{2mm}{\color{notesblue}\rule{\linewidth}{0.8pt}}\vspace{2mm}}
+\newcommand{\NotesTableStyle}{\linespread{1}\fontsize{9.5pt}{13pt}\selectfont\setlength{\tabcolsep}{4pt}\renewcommand{\arraystretch}{1.1}\setlength{\extrarowheight}{5pt}\setlength{\LTpre}{5pt}\setlength{\LTpost}{6pt}\setlength{\parskip}{0pt}\emergencystretch=2em}
+\clubpenalty=10000
+\widowpenalty=10000
+\displaywidowpenalty=10000
+
+\clearcaptionsetup{table}
+
+% Switch page geometry inside this single document; page numbers stay continuous.
+\newcommand{\NotesWanLayout}{%
+  \clearpage
+  \newgeometry{layoutsize={210mm,297mm},margin=18mm,headheight=15pt}%
+  \setlength{\paperwidth}{210mm}%
+  \setlength{\paperheight}{297mm}%
+  \setlength{\pdfpagewidth}{210mm}%
+  \setlength{\pdfpageheight}{297mm}%
+  \fancyhfoffset{0pt}%
+  \fancyhead[L]{\small\sffamily\color{notesgray}Video VAE / Wan2.1 Details}%
+  \setlength{\parskip}{0.26em}%
+}
+
+\newcommand{\NotesHThreeLayout}{%
+  \clearpage
+  \fancyhead[L]{\small\sffamily\color{notesgray}Video VAE / MiniMax-H3 Details}%
+}
+
+\newcommand{\NotesLTXLayout}{%
+  \clearpage
+  \fancyhead[L]{\small\sffamily\color{notesgray}Video VAE / LTX-2.5 Details}%
+}
+
+\newcommand{\NotesFluxLayout}{%
+  \clearpage
+  \fancyhead[L]{\small\sffamily\color{notesgray}Video VAE / FLUX 3 Details}%
+  \linespread{1.06}\selectfont
+  \setlength{\parskip}{0.24em}%
+  \setlength{\abovedisplayskip}{6pt plus 2pt minus 2pt}%
+  \setlength{\belowdisplayskip}{6pt plus 2pt minus 2pt}%
+  \setlength{\abovedisplayshortskip}{3pt plus 2pt}%
+  \setlength{\belowdisplayshortskip}{3pt plus 2pt minus 2pt}%
+}
+
+\usepackage{titlesec}
+\titleformat{\section}{\Large\bfseries\sffamily\color{notesblue}}{}{0pt}{}
+\titleformat{\subsection}{\large\bfseries\sffamily\color{notesblue}}{}{0pt}{}
+\titleformat{\subsubsection}{\normalsize\bfseries\sffamily\color{notesblue}}{}{0pt}{}
+\titlespacing*{\section}{0pt}{1.5ex}{1ex}
+\titlespacing*{\subsection}{0pt}{1.5ex}{1ex}
+\titlespacing*{\subsubsection}{0pt}{1.5ex}{0.5ex}
+\emergencystretch=2em
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+% fallback for those not using the hyperref driver hyperxmp:
+\makeatletter
+\@ifundefined{xmpquote}{\newcommand{\xmpquote}[1]{#1}}{}
+\makeatother
+\hypersetup{
+  colorlinks=true,
+  linkcolor={Maroon},
+  filecolor={Maroon},
+  citecolor={Blue},
+  urlcolor={Blue},
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\setlength{\parskip}{3pt}{\sffamily\bfseries\color{notesblue}\fontsize{23}{27}\selectfont VAEs for Video Generation Models\par}\vspace{1mm}{\color{notesblue}\rule{\linewidth}{0.8pt}}\vspace{1mm}
+
+\section{1. Compression Parameters and DiT Token
+Counts}\label{compression-parameters-and-dit-token-counts}
+
+Compression factors are listed as \textbf{time × height × width}, and
+\(C\) denotes the number of VAE channels. The final column gives the
+shape \textbf{after DiT patchification and before projection}, with the
+elements within each patch folded into the channel dimension.
+
+\[
+R_{\mathrm{nom}}=\frac{3r_t r_h r_w}{C},\qquad
+R_{\mathrm{actual}}=\frac{3THW}{C\,T_zH_zW_z},\qquad
+N=\frac{T_zH_zW_z}{p_tp_hp_w}.
+\]
+
+The DiT patch size is \(p_t\times p_h\times p_w\); patchification only
+rearranges elements. Compression ratios are calculated from the VAE
+output and already account for patchification inside the VAE. Input
+dimensions must be aligned.
+
+\begingroup\NotesTableStyle\fontsize{8.25pt}{9.5pt}\selectfont\renewcommand{\arraystretch}{1.0}\setlength{\extrarowheight}{1pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1200}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.3500}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0850}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0650}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0850}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0850}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.2100}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Model
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+VAE
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Compression\\
+time × height × width\strut
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Latent\\
+channels \(C\)\strut
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Element compression ratio \(R_{\mathrm{nom}}\)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+DiT patchify
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+DiT input shape
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{MiniMax H3} & \begin{minipage}[t]{\linewidth}\raggedright
+\textbf{H3-VisualVAE}\\
+Causal 3D CNN encoder + \textbf{non-causal ViT decoder}; reconstructs
+spatiotemporal pixel blocks in a single projection.\strut
+\end{minipage} & \textbf{\(4\times16\times16\)} & \textbf{24} &
+\textbf{128:1} & \(1\times2\times2\) &
+\(\left[B,96,T_{\mathrm{H3}},\frac{H}{32},\frac{W}{32}\right]\) \\
+\textbf{LTX-2.5} & \begin{minipage}[t]{\linewidth}\raggedright
+\textbf{LTX-2.5 Video VAE}\\
+Causal 3D CNN encoder + \textbf{non-causal 3D CNN / NA Transformer
+diffusion decoder} (CNN in its default configuration); spatial patchify
+×4; the diffusion variant uses one-step pixel denoising.\strut
+\end{minipage} & \textbf{\(8\times32\times32\)} & \textbf{128} &
+\textbf{192:1} & \(1\times1\times1\) &
+\(\left[B,128,1+\frac{T-1}{8},\frac{H}{32},\frac{W}{32}\right]\) \\
+\textbf{FLUX 3 Action} & \begin{minipage}[t]{\linewidth}\raggedright
+\textbf{FLUX 3 Video VAE}\\
+Causal NA Transformer encoder + \textbf{non-causal NA Transformer
+decoder}; \texttt{5×5×5} neighborhood attention.\strut
+\end{minipage} & \textbf{\(4\times32\times32\)} & \textbf{96} &
+\textbf{128:1} & \(1\times1\times1\) &
+\(\left[B,96,1+\frac{T-1}{4},\frac{H}{32},\frac{W}{32}\right]\) \\
+\textbf{Wan 2.1 / 2.2 A14B / Lingbot-Video} &
+\begin{minipage}[t]{\linewidth}\raggedright
+\textbf{Wan2.1-VAE}\\
+Causal 3D CNN encoder + causal 3D CNN decoder; within-frame spatial
+attention and per-layer history caches.\strut
+\end{minipage} & \textbf{\(4\times8\times8\)} & \textbf{16} &
+\textbf{48:1} & \(1\times2\times2\) &
+\(\left[B,64,1+\frac{T-1}{4},\frac{H}{16},\frac{W}{16}\right]\) \\
+\textbf{Wan 2.2 TI2V-5B} & \begin{minipage}[t]{\linewidth}\raggedright
+\textbf{Wan2.2-VAE}\\
+Causal 3D CNN encoder + causal 3D CNN decoder; spatial patchify ×2 and
+residual shortcuts in resampling modules.\strut
+\end{minipage} & \textbf{\(4\times16\times16\)} & \textbf{48} &
+\textbf{64:1} & \(1\times2\times2\) &
+\(\left[B,192,1+\frac{T-1}{4},\frac{H}{32},\frac{W}{32}\right]\) \\
+\textbf{HunyuanVideo-1.5} & \begin{minipage}[t]{\linewidth}\raggedright
+\textbf{AutoencoderKLConv3D}\\
+Causal 3D CNN encoder + causal 3D CNN decoder; causal attention at the
+bottleneck and residual 3D pixel shuffle.\strut
+\end{minipage} & \textbf{\(4\times16\times16\)} & \textbf{32} &
+\textbf{96:1} & \(1\times1\times1\) &
+\(\left[B,32,1+\frac{T-1}{4},\frac{H}{16},\frac{W}{16}\right]\) \\
+\textbf{MAGI-2 Preview} & \begin{minipage}[t]{\linewidth}\raggedright
+\textbf{Wan2.2-VAE + TurboVAED}\\
+Causal 3D CNN encoder + \textbf{non-causal distilled 3D CNN
+decoder}.\strut
+\end{minipage} & \textbf{\(4\times16\times16\)} & \textbf{48} &
+\textbf{64:1} & \(1\times1\times1\) &
+\(\left[B,48,1+\frac{T-1}{4},\frac{H}{16},\frac{W}{16}\right]\) \\
+\end{longtable}
+}
+
+\endgroup
+
+\textbf{H3 handles temporal compression somewhat differently: strictly
+speaking, its ratio is not 4:1, and its element compression ratio is
+also somewhat lower than 128:1.}
+
+\NotesWanLayout
+
+\section{2. Wan2.1-VAE}\label{wan21}
+
+We now take a closer look at what is probably the most classic VAE:
+Wan2.1-VAE. Consider an RGB video with \textbf{81 frames at 480×832}:
+
+\textbf{Full video:} \texttt{{[}3,81,480,832{]}} \(\rightarrow\)
+\textbf{latent:} \texttt{{[}16,21,60,104{]}} \(\rightarrow\)
+\textbf{reconstructed video:} \texttt{{[}3,81,480,832{]}}.
+
+\[
+T_z=1+\frac{81-1}{4}=21,\qquad H_z=\frac{480}{8}=60,\qquad W_z=\frac{832}{8}=104.
+\]
+
+\Needspace{8\baselineskip}
+
+\subsection{2.1 Encoder: Tracing a Subsequent 4-Frame Video
+Chunk}\label{wan21-encoder}
+
+The full video is divided into \textbf{21 chunks} of \textbf{1, 4, 4,
+\ldots{} frames}: one initial single-frame chunk followed by 20
+subsequent chunks. Wan2.1-VAE uses a Feature Cache to retain historical
+features from earlier chunks. We use one subsequent chunk to trace its
+forward pass:
+
+\begingroup\NotesTableStyle\fontsize{10pt}{12pt}\selectfont\renewcommand{\arraystretch}{1.02}\setlength{\extrarowheight}{1pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.1700}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5500}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2800}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Step
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Module and operation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Output shape
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Input & Current video chunk & \texttt{{[}3,4,480,832{]}} \\
+Entry & Causal convolution, \textbf{3\(\rightarrow\)96} &
+\texttt{{[}96,4,480,832{]}} \\
+Stage 1 & Residual block ×2, outputting 96 channels \(\rightarrow\)
+\textbf{spatial downsampling} & \texttt{{[}96,4,240,416{]}} \\
+Stage 2 & Residual block ×2, outputting 192 channels \(\rightarrow\)
+\textbf{spatiotemporal downsampling} & \texttt{{[}192,2,120,208{]}} \\
+Stage 3 & Residual block ×2, outputting 384 channels \(\rightarrow\)
+\textbf{spatiotemporal downsampling} & \texttt{{[}384,1,60,104{]}} \\
+Stage 4 & Residual block ×2, outputting 384 channels &
+\texttt{{[}384,1,60,104{]}} \\
+Bottleneck & Residual block \(\rightarrow\) spatial Attention
+\(\rightarrow\) residual block & \texttt{{[}384,1,60,104{]}} \\
+Exit & RMSNorm \(\rightarrow\) SiLU \(\rightarrow\) causal convolution,
+\textbf{384\(\rightarrow\)32} & \texttt{{[}32,1,60,104{]}} \\
+\end{longtable}
+}
+
+\endgroup
+
+After all 21 chunks have been encoded, their outputs are concatenated
+along the time dimension, passed through a \texttt{1×1×1} convolution,
+and split into \(\mu\) and \texttt{log\_var}, each with shape
+\texttt{{[}16,21,60,104{]}}. The mean \(\mu\) is standardized per
+channel for use as input.
+
+\Needspace{8\baselineskip}
+
+\subsection{2.2 Decoder: Tracing a Subsequent Latent Time
+Step}\label{wan21-decoder}
+
+First, \textbf{undo the standardization} of the full latent, then apply
+a \textbf{\texttt{1×1×1} convolution, 16\(\rightarrow\)16}; the shape
+remains \texttt{{[}16,21,60,104{]}}. Latent temporal positions are then
+decoded one at a time. The table traces a subsequent time step:
+
+\begingroup\NotesTableStyle\fontsize{10pt}{12pt}\selectfont\renewcommand{\arraystretch}{1.02}\setlength{\extrarowheight}{1pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.1700}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5500}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2800}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Step
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Module and operation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Output shape
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Input & Latent chunk after undoing standardization &
+\texttt{{[}16,1,60,104{]}} \\
+Entry & Causal convolution, \textbf{16\(\rightarrow\)384} &
+\texttt{{[}384,1,60,104{]}} \\
+Bottleneck & Residual block \(\rightarrow\) spatial Attention
+\(\rightarrow\) residual block & \texttt{{[}384,1,60,104{]}} \\
+Stage 1 & Residual block ×3, outputting 384 channels \(\rightarrow\)
+\textbf{spatiotemporal upsampling, 384\(\rightarrow\)192} &
+\texttt{{[}192,2,120,208{]}} \\
+Stage 2 & Residual block ×3, first increasing \textbf{192 to 384}
+\(\rightarrow\) \textbf{spatiotemporal upsampling,
+384\(\rightarrow\)192} & \texttt{{[}192,4,240,416{]}} \\
+Stage 3 & Residual block ×3, outputting 192 channels \(\rightarrow\)
+\textbf{spatial upsampling, 192\(\rightarrow\)96} &
+\texttt{{[}96,4,480,832{]}} \\
+Stage 4 & Residual block ×3, outputting 96 channels &
+\texttt{{[}96,4,480,832{]}} \\
+Exit & RMSNorm \(\rightarrow\) SiLU \(\rightarrow\) causal convolution,
+\textbf{96\(\rightarrow\)3} & \texttt{{[}3,4,480,832{]}} \\
+\end{longtable}
+}
+
+\endgroup
+
+The first frame skips temporal resampling and produces only \textbf{1
+frame}.
+
+\Needspace{8\baselineskip}
+
+\subsection{2.3 Downsampling and Upsampling}\label{wan21-sampling}
+
+\begingroup\NotesTableStyle\fontsize{10pt}{12pt}\selectfont\renewcommand{\arraystretch}{1.02}\setlength{\extrarowheight}{1pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Operation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Implementation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Shape change
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{Spatial downsampling} & Pad each frame by 1 on the right and
+bottom \(\rightarrow\) \texttt{3×3\ Conv2d}, \texttt{stride=2} & Halve
+\(H,W\); \(C,T\) unchanged \\
+\textbf{Temporal downsampling} & Concatenate \textbf{1 cached historical
+frame} \(\rightarrow\) \texttt{3×1×1} temporal convolution with temporal
+stride 2 & Halve \(T\) for subsequent chunks; \(C,H,W\) unchanged \\
+\textbf{Spatial upsampling} & Per-frame nearest-neighbor interpolation
+×2 (\texttt{nearest-exact}) \(\rightarrow\) \texttt{3×3\ Conv2d},
+\(C\rightarrow C/2\) & Double \(H,W\) and halve \(C\); \(T\)
+unchanged \\
+\textbf{Temporal upsampling} & \texttt{3×1×1} causal convolution,
+\(C\rightarrow2C\) \(\rightarrow\) rearrange the two channel groups into
+the time dimension & Double \(T\) for subsequent chunks; final \(C,H,W\)
+unchanged \\
+\end{longtable}
+}
+
+\endgroup
+
+\textbf{Execution order:} spatiotemporal downsampling is \textbf{spatial
+first, then temporal}; spatiotemporal upsampling is \textbf{temporal
+first, then spatial}.
+
+\Needspace{8\baselineskip}
+
+\subsubsection{Residual Blocks, Caches, and
+Attention}\label{residual-blocks-caches-and-attention}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Residual blocks:} the main branch applies two sets of
+  ``RMSNorm \(\rightarrow\) SiLU \(\rightarrow\) \texttt{3×3×3} causal
+  convolution,'' then adds the shortcut. When channel counts differ, the
+  shortcut uses a \texttt{1×1×1} convolution to align them. Residual
+  blocks preserve \(T,H,W\).
+\item
+  \textbf{Causal convolution caches:} a standard causal convolution with
+  temporal kernel size 3 and stride 1 needs features from the preceding
+  \textbf{2 temporal positions}. Missing positions at the beginning of
+  the sequence are zero-padded. Each layer maintains its own cache, with
+  temporal positions measured at that layer's resolution. Temporal
+  downsampling in the table above uses a separate \textbf{1-frame cache}
+  path.
+\item
+  \textbf{Within-frame spatial Attention:} attention operates only on
+  the 2D feature map at the same temporal position and preserves
+  \texttt{{[}C,T,H,W{]}}. Information across time is conveyed through
+  causal convolutions.
+\end{itemize}
+
+With Wan2.1-VAE as a reference, we briefly introduce some follow-up
+models.
+
+Wan2.2-VAE retains Wan2.1-VAE's causal convolutions and \(4n+1\)
+handling, with a temporal compression factor of 4. The main change is
+the addition of \texttt{2×2} patchification at the entry, rearranging
+spatial positions into the channel dimension. Three subsequent spatial
+downsampling stages increase spatial compression from 8×8 to 16×16,
+while the latent channel count rises from 16 to 48. Architecturally,
+Wan2.2 widens both the encoder and the decoder: the encoder's base
+channel count increases from 96 to 160 and its bottleneck from 384 to
+640; the decoder's base channel count increases from 96 to 256 and its
+bottleneck from 384 to 1024. In addition to the existing residual
+blocks, shortcuts are added around entire resampling stages:
+downsampling aligns shapes through rearrangement and Avgpool, while
+upsampling uses rearrangement and copying, before adding the result to
+the main branch.
+
+HunyuanVideo-1.5 keeps 4× temporal compression, increases compression
+along both spatial axes from 8× to 16×, and raises the latent channel
+count from 16 to 32. Compared with Wan's separate spatial and temporal
+resampling, it uses causal convolution with PixelShuffle/Unshuffle-style
+rearrangement and adds residual shortcuts to the resampling modules and
+the projections on both sides of the latent. Attention in the middle of
+the network expands from within-frame spatial attention to
+spatiotemporal causal attention, allowing direct attention to current
+and historical frames for cross-frame information exchange.
+
+\NotesHThreeLayout
+
+\section{3. MiniMax-H3 VAE}\label{minimax-h3}
+
+Next is MiniMax-H3 VAE. MiniMax H3's default video chunking rule
+requires the length to align with \textbf{\(17n+5\)} (H3's handling here
+is rather curious; I have considered some possible reasons, but have not
+yet found an official explanation). If the original video has \textbf{81
+frames (\(4d+1\))}, this example first \textbf{repeats the final frame
+to pad the video to 90 frames}, then removes the final 9 frames after
+reconstruction.
+
+\textbf{Full video:} \texttt{{[}3,90,480,832{]}} \(\rightarrow\)
+\textbf{latent:} \texttt{{[}24,27,30,52{]}} \(\rightarrow\)
+\textbf{reconstructed video:} \texttt{{[}3,90,480,832{]}}.
+
+\[
+90=17\times5+5,\qquad T_z=5\times5+2=27,\qquad H_z=\frac{480}{16}=30,\qquad W_z=\frac{832}{16}=52.
+\]
+
+\Needspace{8\baselineskip}
+
+\subsection{3.1 Encoder: Tracing a 17-Frame Video
+Chunk}\label{h3-encoder}
+
+During encoding, the 90-frame video is internally padded again by
+repeating the final frame, temporarily reaching \textbf{102 frames}. It
+is then split into \textbf{six 17-frame chunks}, each encoded
+independently.
+
+\begingroup\NotesTableStyle\fontsize{10pt}{12pt}\selectfont\renewcommand{\arraystretch}{1.02}\setlength{\extrarowheight}{1pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.1700}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5500}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2800}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Step
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Module and operation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Output shape
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Input & Current video chunk & \texttt{{[}3,17,480,832{]}} \\
+Entry & \texttt{3×3×3} causal convolution, \textbf{3\(\rightarrow\)128}
+& \texttt{{[}128,17,480,832{]}} \\
+Stage 1 & Residual block ×2, outputting 128 channels \(\rightarrow\)
+\textbf{spatial downsampling} & \texttt{{[}128,17,240,416{]}} \\
+Stage 2 & Residual block ×2, outputting 256 channels \(\rightarrow\)
+\textbf{spatiotemporal downsampling} & \texttt{{[}256,9,120,208{]}} \\
+Stage 3 & Residual block ×2, outputting 256 channels \(\rightarrow\)
+\textbf{spatiotemporal downsampling} & \texttt{{[}256,5,60,104{]}} \\
+Stage 4 & Residual block ×2, outputting 512 channels \(\rightarrow\)
+\textbf{spatial downsampling} & \texttt{{[}512,5,30,52{]}} \\
+Stage 5 & Residual block ×2, outputting 512 channels &
+\texttt{{[}512,5,30,52{]}} \\
+Stage 6 & Residual block ×2, outputting 1024 channels &
+\texttt{{[}1024,5,30,52{]}} \\
+Exit & GroupNorm \(\rightarrow\) SiLU \(\rightarrow\) causal
+convolution, \textbf{1024\(\rightarrow\)48} &
+\texttt{{[}48,5,30,52{]}} \\
+Distribution projection & \texttt{1×1×1} convolution,
+\textbf{48\(\rightarrow\)48} & \texttt{{[}48,5,30,52{]}} \\
+\end{longtable}
+}
+
+\endgroup
+
+Both temporal downsampling steps round up, giving the sequence
+\textbf{\(17\rightarrow9\rightarrow5\)}. After all 6 chunks have been
+encoded, concatenating along time gives \texttt{{[}48,30,30,52{]}}. With
+\texttt{token\_drop=3}, \textbf{3 temporal positions are dropped from
+the end of the full sequence}, leaving \texttt{{[}48,27,30,52{]}} (the
+discarded portion corresponds to the 12 repeated final frames).
+
+The output is then split into \(\mu\) and \texttt{log\_var}, each with
+shape \texttt{{[}24,27,30,52{]}}. The latent is sampled from the
+posterior distribution and then standardized per channel.
+
+\Needspace{8\baselineskip}
+
+\subsection{3.2 Decoder: Tracing a Latent Window}\label{h3-decoder}
+
+First, \textbf{undo the standardization} of the full latent. Decode it
+in \textbf{windows of 7 temporal positions, advancing by 5 positions
+each time}, so neighboring windows overlap by 2 positions. We trace one
+window of shape \texttt{{[}24,7,30,52{]}}; its video token count and
+hidden dimension are:
+
+\[
+N=7\times30\times52=10920,\qquad D=32\times64=2048.
+\]
+
+\begingroup\NotesTableStyle\fontsize{10pt}{12pt}\selectfont\renewcommand{\arraystretch}{1.02}\setlength{\extrarowheight}{1pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.1700}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5500}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2800}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Step
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Module and operation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Output shape
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Input & Latent window after undoing standardization &
+\texttt{{[}24,7,30,52{]}} \\
+Entry & \texttt{1×1×1} convolution, \textbf{24\(\rightarrow\)24} &
+\texttt{{[}24,7,30,52{]}} \\
+Flatten & Turn each spatiotemporal position into one token &
+\texttt{{[}10920,24{]}} \\
+Feature projection & Linear, \textbf{24\(\rightarrow\)2048} &
+\texttt{{[}10920,2048{]}} \\
+Extra tokens & Append \textbf{4 register tokens + 1 initially zero
+token} (a classic CV move) & \texttt{{[}10925,2048{]}} \\
+Backbone & Transformer block ×36, 3D RoPE & \texttt{{[}10925,2048{]}} \\
+Exit & LayerNorm \(\rightarrow\) Linear,
+\textbf{2048\(\rightarrow\)3072} & \texttt{{[}10925,3072{]}} \\
+Remove extra tokens & Keep the video tokens &
+\texttt{{[}10920,3072{]}} \\
+Pixel rearrangement & Expand each token into a \textbf{\texttt{4×16×16}
+RGB block} & \texttt{{[}3,28,480,832{]}} \\
+\end{longtable}
+}
+
+\endgroup
+
+The output projection maps each video token to
+\textbf{\(3072=3\times4\times16\times16\)} values, then rearranges them
+into a \texttt{4×16×16} RGB block. A window therefore first produces
+\texttt{{[}3,28,480,832{]}}, followed by temporal cropping and window
+blending.
+
+\Needspace{8\baselineskip}
+
+\subsubsection{Temporal Cropping and Full-Sequence
+Stitching}\label{h3-time-stitch}
+
+Each window's 28 output frames are split into the first \textbf{20
+frames} and the final \textbf{8 frames}. The first 3 frames of each part
+are removed, leaving a \textbf{17-frame main segment + a 5-frame overlap
+region}.
+
+The 27 latent temporal positions form \textbf{5 windows}. With
+zero-based indexing, their ranges are \texttt{0-6}, \texttt{5-11},
+\texttt{10-16}, \texttt{15-21}, and \texttt{20-26}. Each window retains
+22 frames, and adjacent windows blend their 5 overlapping frames,
+yielding:
+
+\[
+5\times22-4\times5=90\text{ frames}.
+\]
+
+The blended output has shape \texttt{{[}3,90,480,832{]}}. Removing the
+final 9 frames added in this example restores
+\texttt{{[}3,81,480,832{]}}.
+
+\Needspace{8\baselineskip}
+
+\subsection{3.3 Downsampling and Pixel Expansion}\label{h3-operations}
+
+\begingroup\NotesTableStyle\fontsize{10pt}{12pt}\selectfont\renewcommand{\arraystretch}{1.02}\setlength{\extrarowheight}{1pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Operation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Implementation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Shape change
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{Spatial downsampling} & Reflection-pad by 1 on the right and
+bottom \(\rightarrow\) \texttt{3×3×3} causal convolution, stride
+\texttt{(1,2,2)} & Halve \(H,W\); \(C,T\) unchanged \\
+\textbf{Spatiotemporal downsampling} & Reflection-pad by 1 on the right
+and bottom \(\rightarrow\) \texttt{3×3×3} causal convolution, stride
+\texttt{(2,2,2)} & Halve \(H,W\); \(T\to\lceil T/2\rceil\); \(C\)
+unchanged \\
+\textbf{Pixel expansion} & Linear \(\rightarrow\) spatiotemporal
+rearrangement & Each video token produces one \texttt{4×16×16} RGB
+block \\
+\end{longtable}
+}
+
+\endgroup
+
+\textbf{Downsampling order:} spatial \(\rightarrow\) spatiotemporal
+\(\rightarrow\) spatiotemporal \(\rightarrow\) spatial, at the ends of
+the first four stages, respectively. Temporal convolutions in both
+downsampling types use 2 zero-padded positions on the left.
+
+\Needspace{8\baselineskip}
+
+\subsubsection{Residual Blocks, Normalization, and
+Attention}\label{residual-blocks-normalization-and-attention}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Residual blocks:} the main branch applies two sets of
+  ``GroupNorm \(\rightarrow\) SiLU \(\rightarrow\) \texttt{3×3×3} causal
+  convolution,'' then adds the shortcut. When channel counts differ, the
+  shortcut uses a \texttt{1×1×1} convolution to align them. Residual
+  blocks preserve \(T,H,W\).
+\item
+  \textbf{Causal encoding:} temporal convolutions use zero-padding only
+  on the left, and GroupNorm is computed independently at each temporal
+  position. Each 17-frame chunk enters the Encoder independently.
+\item
+  \textbf{ViT decoder blocks:} each block applies RMSNorm
+  \(\rightarrow\) Attention, followed by RMSNorm \(\rightarrow\) gated
+  SiLU FFN. Both branches are scaled by learnable parameters before
+  being added back to the residual, preserving \texttt{{[}N,2048{]}}.
+\item
+  \textbf{Attention scope:} the ViT Decoder in the released
+  configuration is non-causal and can attend to all temporal positions
+  within the current window.
+\end{itemize}
+
+\NotesLTXLayout
+
+\section{4. LTX-2.5 Video VAE}\label{ltx25}
+
+Next is LTX-2.5's video VAE. It uses a \textbf{causal 3D CNN Encoder}
+and offers two Decoders: a \textbf{non-causal 3D CNN decoder} and a
+\textbf{non-causal NA Transformer diffusion decoder}. Both share the
+same latent space, with a temporal compression factor of \textbf{8},
+spatial compression factors of \textbf{32} along both height and width,
+and \textbf{128} latent channels.
+
+Again, consider an RGB video with \textbf{81 frames at 480×832}. Shapes
+are written as \texttt{{[}C,T,H,W{]}}, omitting \texttt{B=1}:
+
+\textbf{Full video:} \texttt{{[}3,81,480,832{]}} \(\rightarrow\)
+\textbf{latent:} \texttt{{[}128,11,15,26{]}} \(\rightarrow\)
+\textbf{reconstructed video:} \texttt{{[}3,81,480,832{]}}.
+
+\[
+T_z=1+\frac{81-1}{8}=11,\qquad H_z=\frac{480}{32}=15,\qquad W_z=\frac{832}{32}=26.
+\]
+
+We trace the forward pass of the full video below. Chunking and overlap
+blending are separate execution strategies; we do not treat the video as
+11 independently encoded and decoded chunks from the outset.
+
+\Needspace{8\baselineskip}
+
+\subsection{4.1 Encoder: Tracing the Full 81-Frame
+Video}\label{ltx25-encoder}
+
+The entry first applies \textbf{4×4 spatial patchification}, rearranging
+the 16 neighboring pixel positions in each frame into the channel
+dimension while keeping the temporal length unchanged. Four downsampling
+stages follow: \textbf{spatial \(\rightarrow\) temporal \(\rightarrow\)
+spatiotemporal \(\rightarrow\) spatiotemporal}.
+
+\begingroup\NotesTableStyle\fontsize{10pt}{12pt}\selectfont\renewcommand{\arraystretch}{1.02}\setlength{\extrarowheight}{1pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.1700}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5500}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2800}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Step
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Module and operation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Output shape
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Input & RGB video & \texttt{{[}3,81,480,832{]}} \\
+Patchify & Spatial \texttt{4×4} rearrangement,
+\textbf{3\(\rightarrow\)48} & \texttt{{[}48,81,120,208{]}} \\
+Entry & \texttt{3×3×3} causal convolution, \textbf{48\(\rightarrow\)128}
+& \texttt{{[}128,81,120,208{]}} \\
+Stage 1 & Residual block ×4, 128 channels \(\rightarrow\)
+\textbf{spatial downsampling, 128\(\rightarrow\)256} &
+\texttt{{[}256,81,60,104{]}} \\
+Stage 2 & Residual block ×6, 256 channels \(\rightarrow\)
+\textbf{temporal downsampling, 256\(\rightarrow\)512} &
+\texttt{{[}512,41,60,104{]}} \\
+Stage 3 & Residual block ×4, 512 channels \(\rightarrow\)
+\textbf{spatiotemporal downsampling, 512\(\rightarrow\)1024} &
+\texttt{{[}1024,21,30,52{]}} \\
+Stage 4 & Residual block ×2, 1024 channels \(\rightarrow\)
+\textbf{spatiotemporal downsampling, 1024\(\rightarrow\)1024} &
+\texttt{{[}1024,11,15,26{]}} \\
+Bottleneck & Residual block ×2, 1024 channels &
+\texttt{{[}1024,11,15,26{]}} \\
+Exit & PixelNorm \(\rightarrow\) SiLU \(\rightarrow\) causal
+convolution, \textbf{1024\(\rightarrow\)129} &
+\texttt{{[}129,11,15,26{]}} \\
+\end{longtable}
+}
+
+\endgroup
+
+All three temporal downsampling steps preserve the position
+corresponding to the first frame. The temporal lengths are:
+
+\[
+81\rightarrow41\rightarrow21\rightarrow11.
+\]
+
+The first \textbf{128 channels of the convolutional head's output are
+\(\mu\)}. As in the other examples, normalization using per-channel
+means and standard deviations gives \texttt{{[}128,11,15,26{]}}. Unlike
+the other VAEs, this one has no additional \texttt{1×1×1} distribution
+projection convolution.
+
+\clearpage
+
+\subsection{4.2 CNN Decoder: Reconstructing the Video Stage by
+Stage}\label{ltx25-conv-decoder}
+
+First undo the latent's per-channel normalization, then apply
+convolutional residual blocks and four upsampling stages. Finally,
+unpatchify restores the RGB pixels.
+
+\begingroup\NotesTableStyle\fontsize{10pt}{12pt}\selectfont\renewcommand{\arraystretch}{1.02}\setlength{\extrarowheight}{1pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.1700}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5500}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2800}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Step
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Module and operation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Output shape
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Input & Latent after undoing normalization &
+\texttt{{[}128,11,15,26{]}} \\
+Entry & \texttt{3×3×3} convolution, \textbf{128\(\rightarrow\)1024} &
+\texttt{{[}1024,11,15,26{]}} \\
+Stage 1 & Residual block ×2, 1024 channels \(\rightarrow\)
+\textbf{spatiotemporal upsampling, 1024\(\rightarrow\)512} &
+\texttt{{[}512,21,30,52{]}} \\
+Stage 2 & Residual block ×2, 512 channels \(\rightarrow\)
+\textbf{spatiotemporal upsampling, 512\(\rightarrow\)512} &
+\texttt{{[}512,41,60,104{]}} \\
+Stage 3 & Residual block ×4, 512 channels \(\rightarrow\)
+\textbf{temporal upsampling, 512\(\rightarrow\)256} &
+\texttt{{[}256,81,60,104{]}} \\
+Stage 4 & Residual block ×6, 256 channels \(\rightarrow\)
+\textbf{spatial upsampling, 256\(\rightarrow\)128} &
+\texttt{{[}128,81,120,208{]}} \\
+Stage 5 & Residual block ×4, 128 channels &
+\texttt{{[}128,81,120,208{]}} \\
+Exit & PixelNorm \(\rightarrow\) SiLU \(\rightarrow\) \texttt{3×3×3}
+convolution, \textbf{128\(\rightarrow\)48} &
+\texttt{{[}48,81,120,208{]}} \\
+Unpatchify & Rearrange channels into \texttt{4×4} spatial pixel blocks,
+\textbf{48\(\rightarrow\)3} & \texttt{{[}3,81,480,832{]}} \\
+\end{longtable}
+}
+
+\endgroup
+
+Temporal upsampling first doubles the length and then removes the first
+temporal position, so each step follows \textbf{\(T\rightarrow2T-1\)}:
+
+\[
+11\rightarrow21\rightarrow41\rightarrow81.
+\]
+
+The convolutions in this Decoder run in \textbf{non-causal mode},
+allowing them to use information from both preceding and subsequent
+temporal positions.
+
+\Needspace{8\baselineskip}
+
+\subsection{4.3 Diffusion Decoder: Conditioning Features and Pixel
+Denoising}\label{ltx25-diffusion-decoder}
+
+This decoder first upsamples the latent into conditioning features, or
+\textbf{context}. Conditioned on this context, it reconstructs the video
+from pixel noise in \textbf{1 denoising step, directly predicting the
+reconstructed video \(x_0\)}.
+
+\Needspace{8\baselineskip}
+
+\subsubsection{Generating Conditioning Features}\label{ltx25-context}
+
+The official implementation repeats the final latent temporal position
+\textbf{2 additional times} to handle the end boundary of neighborhood
+Attention. We include this temporary padding in the shapes below and
+crop it away at the end.
+
+\begingroup\NotesTableStyle\fontsize{10pt}{12pt}\selectfont\renewcommand{\arraystretch}{1.02}\setlength{\extrarowheight}{1pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.1700}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5500}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2800}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Step
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Module and operation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Output shape
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Input & Latent after undoing normalization &
+\texttt{{[}128,11,15,26{]}} \\
+Boundary handling & Repeat the final latent temporal position 2
+additional times & \texttt{{[}128,13,15,26{]}} \\
+Entry & Position-wise Linear, \textbf{128\(\rightarrow\)2048} &
+\texttt{{[}2048,13,15,26{]}} \\
+Stage 1 & NA Block ×4 \(\rightarrow\) \textbf{spatial upsampling,
+2048\(\rightarrow\)1024} & \texttt{{[}1024,13,30,52{]}} \\
+Stage 2 & NA Block ×6 \(\rightarrow\) \textbf{temporal upsampling,
+1024\(\rightarrow\)512} & \texttt{{[}512,25,30,52{]}} \\
+Stage 3 & NA Block ×4 \(\rightarrow\) \textbf{spatiotemporal upsampling,
+512\(\rightarrow\)512} & \texttt{{[}512,49,60,104{]}} \\
+Stage 4 & NA Block ×2 \(\rightarrow\) \textbf{spatiotemporal upsampling,
+512\(\rightarrow\)256} & \texttt{{[}256,97,120,208{]}} \\
+Crop & Remove the final \textbf{16 temporal positions} corresponding to
+the temporary padding & \texttt{{[}256,81,120,208{]}} \\
+\end{longtable}
+}
+
+\endgroup
+
+The 2 added latent temporal positions undergo 8× temporal expansion,
+corresponding to \textbf{16 temporal positions}, so cropping gives
+\textbf{\(97-16=81\)}. The resulting context already has the target
+video's temporal length, while its spatial resolution remains
+\textbf{1/4×1/4} of the target.
+
+\clearpage
+
+\subsubsection{Pixel Denoising and
+Reconstruction}\label{ltx25-pixel-decode}
+
+Initialize random pixel noise with the same shape as the target video.
+We trace the pixel feature branch below; context is injected as
+conditioning in each diffusion block.
+
+\begingroup\NotesTableStyle\fontsize{10pt}{12pt}\selectfont\renewcommand{\arraystretch}{1.02}\setlength{\extrarowheight}{1pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.1700}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5500}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2800}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Step
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Module and operation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Output shape
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Input & Random pixel noise \(x_t\) & \texttt{{[}3,81,480,832{]}} \\
+Patchify & Spatial \texttt{4×4} rearrangement,
+\textbf{3\(\rightarrow\)48} & \texttt{{[}48,81,120,208{]}} \\
+Entry & Position-wise Linear, \textbf{48\(\rightarrow\)256} &
+\texttt{{[}256,81,120,208{]}} \\
+Denoising backbone & Diffusion NA Block ×8, injecting context and
+denoising timestep conditioning & \texttt{{[}256,81,120,208{]}} \\
+Exit & RMSNorm \(\rightarrow\) Linear, \textbf{256\(\rightarrow\)48} &
+\texttt{{[}48,81,120,208{]}} \\
+Unpatchify & Rearrange channels into \texttt{4×4} RGB pixel blocks,
+\textbf{48\(\rightarrow\)3} & \texttt{{[}3,81,480,832{]}} \\
+\end{longtable}
+}
+
+\endgroup
+
+The final output is the reconstructed video \(x_0\). The \textbf{8
+blocks refer to network depth}; the ``denoising timestep'' indicates the
+noise level and is distinct from the video's 81 temporal positions.
+
+\Needspace{8\baselineskip}
+
+\subsection{4.4 NA Attention: Local Spatiotemporal
+Attention}\label{ltx25-na}
+
+\textbf{NA stands for Neighborhood Attention.} At each feature-map
+position \texttt{(t,h,w)}, it takes only the K and V values within a
+nearby 3D window and computes Attention with the Q at the current
+position. The window slides with the query position, and neighboring
+windows overlap.
+
+For example, away from boundaries, a \textbf{\texttt{3×7×7}} window
+covers the \textbf{preceding, current, and following temporal
+positions}, taking \textbf{7×7} spatial grid points at each one. Each
+query in each attention head therefore attends to
+\textbf{\(3\times7\times7=147\)} positions, including itself.
+
+\begingroup\NotesTableStyle\fontsize{10pt}{12pt}\selectfont\renewcommand{\arraystretch}{1.02}\setlength{\extrarowheight}{1pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.2200}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1200}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1500}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1400}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.2300}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1400}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Stage
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Feature channels
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Attention heads
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Head dimension
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Window: time × height × width
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Positions per head
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Stage 1 & 2048 & 32 & 64 & \texttt{3×7×7} & 147 \\
+Stage 2 & 1024 & 16 & 64 & \texttt{3×7×7} & 147 \\
+Stage 3 & 512 & 8 & 64 & \texttt{3×5×5} & 75 \\
+Stage 4 & 512 & 8 & 64 & \texttt{3×5×5} & 75 \\
+Stage 5: pixel denoising & 256 & 4 & 64 & \texttt{11×11×11} & 1331 \\
+\end{longtable}
+}
+
+\endgroup
+
+Every stage uses a head dimension of \textbf{64}, with \textbf{\(C/64\)}
+heads. Window sizes are measured in \textbf{feature grid points at the
+corresponding layer}. NA itself preserves \texttt{{[}C,T,H,W{]}};
+separate modules perform upsampling.
+
+A standard NA Block applies:
+
+\begin{verbatim}
+RMSNorm -> 3D NA Attention -> add residual
+RMSNorm -> SwiGLU MLP      -> add residual
+\end{verbatim}
+
+Q and K use per-head RMSNorm and 3D RoPE; the MLP hidden dimension is
+\textbf{4C}. The Diffusion NA Blocks in Stage 5 additionally inject
+context and modulate features using the denoising timestep.
+
+All these Attention layers are \textbf{non-causal}, allowing attention
+to subsequent temporal positions. At boundaries, the window shifts into
+the valid region to retain its size. For example, with a temporal window
+of 3, the first position attends to \texttt{0,\ 1,\ 2}.
+
+\clearpage
+
+\subsection{4.5 Downsampling, Upsampling, and Temporal
+Boundaries}\label{ltx25-sampling}
+
+\begingroup\NotesTableStyle\fontsize{10pt}{12pt}\selectfont\renewcommand{\arraystretch}{1.02}\setlength{\extrarowheight}{1pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Operation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Implementation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Shape change
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{Spatial Patchify} & Rearrange each frame's \texttt{4×4} pixel
+blocks into the channel dimension & Divide \(H,W\) by 4; multiply \(C\)
+by 16; \(T\) unchanged \\
+\textbf{Spatial downsampling} & Causal convolution \(\rightarrow\)
+rearrange spatial positions into channels; add a shortcut obtained by
+rearrangement and grouped averaging & Halve \(H,W\); \(T\) unchanged \\
+\textbf{Temporal downsampling} & Repeat the first frame once
+\(\rightarrow\) causal convolution and temporal rearrangement; add a
+shortcut & \(T\rightarrow(T+1)/2\); \(H,W\) unchanged \\
+\textbf{Spatiotemporal downsampling} & Repeat the first frame once
+\(\rightarrow\) causal convolution and joint \texttt{2×2×2}
+rearrangement; add a shortcut & \(T\rightarrow(T+1)/2\); halve
+\(H,W\) \\
+\textbf{CNN upsampling} & Convolution produces the required channels
+\(\rightarrow\) rearrange channels into the specified spatial/temporal
+dimensions & Double the specified axes; remove the first frame after
+temporal expansion \\
+\textbf{NA Decoder upsampling} & Linear produces the required channels
+\(\rightarrow\) rearrange channels into the specified spatial/temporal
+dimensions & Double the specified axes; remove the first frame after
+temporal expansion \\
+\textbf{Spatial Unpatchify} & Rearrange channels back into each frame's
+\texttt{4×4} pixel blocks & Multiply \(H,W\) by 4; divide \(C\) by 16;
+\(T\) unchanged \\
+\end{longtable}
+}
+
+\endgroup
+
+The main downsampling branch first adjusts channels through convolution,
+then folds local spatiotemporal positions into the channel dimension.
+The shortcut applies the same rearrangement to the input and uses
+grouped averaging to match the output channel count. Spatiotemporal
+resampling uses joint rearrangement.
+
+\Needspace{8\baselineskip}
+
+\subsubsection{Residual Blocks, Normalization, and
+Chunking}\label{residual-blocks-normalization-and-chunking}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{CNN residual blocks:} the main branch primarily applies two
+  sets of ``PixelNorm \(\rightarrow\) SiLU \(\rightarrow\)
+  \texttt{3×3×3} convolution,'' then adds the shortcut, preserving
+  \(T,H,W\).
+\item
+  \textbf{PixelNorm:} RMS normalization along the channel dimension at
+  each spatiotemporal position.
+\item
+  \textbf{Temporal boundaries:} the Encoder's causal convolutions use
+  first-frame replication for left temporal padding. Rearrangement
+  modules that include temporal downsampling also repeat the first frame
+  once more. The Decoder removes leading frames after temporal
+  expansion, giving the overall length
+  \textbf{\(T_{\mathrm{out}}=8(T_z-1)+1\)}.
+\item
+  \textbf{Chunked execution:} LTX supports tiling with overlap regions.
+  Here, \textbf{\(81=1+10\times8\)} expresses the temporal compression
+  relationship. Actual decoding must retain context across time; the 11
+  latent temporal positions cannot simply be decoded independently and
+  concatenated.
+\end{itemize}
+
+\NotesFluxLayout
+
+\section{5. FLUX 3 Video VAE}\label{flux3}
+
+Next is the video VAE in FLUX 3 Action. It uses a \textbf{causal NA
+Transformer Encoder + non-causal NA Transformer Decoder}, with a
+temporal compression factor of \textbf{4}, spatial compression factors
+of \textbf{32} along both height and width, and \textbf{96} latent
+channels.
+
+Again, consider an RGB video with \textbf{81 frames at 480×832}. Shapes
+are written as \texttt{{[}C,T,H,W{]}}, omitting \texttt{B=1}:
+
+\textbf{Full video:} \texttt{{[}3,81,480,832{]}} \(\rightarrow\)
+\textbf{latent:} \texttt{{[}96,21,15,26{]}} \(\rightarrow\)
+\textbf{reconstructed video:} \texttt{{[}3,81,480,832{]}}.
+
+\[
+T_z=1+\frac{81-1}{4}=21,\qquad H_z=\frac{480}{32}=15,\qquad W_z=\frac{832}{32}=26.
+\]
+
+\Needspace{6\baselineskip}
+
+\subsection{5.1 Blocks and Attention}\label{flux3-attention}
+
+The FLUX 3 VAE also uses Neighborhood Attention, with
+\textbf{\texttt{5×5×5}} windows throughout, together with QK Norm and 3D
+RoPE. \textbf{The Encoder uses temporally causal Attention, while the
+Decoder uses non-causal Attention.}
+
+\begingroup\NotesTableStyle\fontsize{10pt}{12pt}\selectfont\renewcommand{\arraystretch}{1.02}\setlength{\extrarowheight}{1pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.3500}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Feature channels
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Attention heads
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Head dimension
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Window: time × height × width
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+256 & 4 & 64 & \texttt{5×5×5} \\
+512 & 8 & 64 & \texttt{5×5×5} \\
+1024 & 16 & 64 & \texttt{5×5×5} \\
+2048 & 32 & 64 & \texttt{5×5×5} \\
+\end{longtable}
+}
+
+\endgroup
+
+Within a single NA layer, the Encoder attends only to \textbf{the
+current temporal position and up to 4 preceding positions}. Away from
+boundaries, the Decoder attends to \textbf{the preceding 2 positions,
+the current position, and the following 2 positions}; at boundaries, the
+window shifts toward the sequence interior. Single-frame inputs use
+\textbf{\texttt{5×5} 2D NA}.
+
+\Needspace{6\baselineskip}
+
+\subsection{5.2 Actual Chunking and Context}\label{flux3-chunking}
+
+\textbf{Encoding chunks:} execution uses \textbf{45-frame chunks,
+advancing by 44 frames each time}. Neighboring chunks overlap by 1
+frame, and each chunk enters the Encoder independently. For the classic
+81-frame example, the final frame is first repeated to \textbf{pad 81
+frames to 89}:
+
+\begin{verbatim}
+Chunk 1: frames 1-45
+Chunk 2: frames 45-89
+\end{verbatim}
+
+Each chunk produces \textbf{12 latent temporal positions}. Keep the
+entire output of the first chunk, discard the first latent temporal
+position from subsequent chunks, then concatenate and crop according to
+the original video length:
+
+\[
+12+(12-1)=23
+\quad\longrightarrow\quad
+\text{keep the first }21\text{ temporal positions}.
+\]
+
+\Needspace{6\baselineskip}
+
+\subsection{5.3 Encoder: Tracing a 45-Frame Video
+Chunk}\label{flux3-encoder}
+
+The entry divides pixels into \textbf{\texttt{1×4×4}} patches and
+projects them to 256 channels, implemented as a Conv3d with both kernel
+and stride set to \texttt{1×4×4}. Three spatial merging steps follow,
+then two temporal merging steps at low spatial resolution.
+
+\begingroup\NotesTableStyle\fontsize{10pt}{12pt}\selectfont\renewcommand{\arraystretch}{1.02}\setlength{\extrarowheight}{1pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.1700}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5500}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2800}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Step
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Module and operation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Output shape
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Input & Current video chunk & \texttt{{[}3,45,480,832{]}} \\
+Entry & \texttt{1×4×4\ Conv3d}, stride \texttt{(1,4,4)},
+\textbf{3\(\rightarrow\)256} & \texttt{{[}256,45,120,208{]}} \\
+Stage 1 & NA Block ×1, 256 channels \(\rightarrow\) \textbf{spatial
+merging, 256\(\rightarrow\)512} & \texttt{{[}512,45,60,104{]}} \\
+Stage 2 & NA Block ×4, 512 channels \(\rightarrow\) \textbf{spatial
+merging, 512\(\rightarrow\)1024} & \texttt{{[}1024,45,30,52{]}} \\
+Stage 3 backbone & NA Block ×8, 1024 channels \(\rightarrow\)
+\textbf{spatial merging, 1024\(\rightarrow\)2048} &
+\texttt{{[}2048,45,15,26{]}} \\
+First temporal compression & Additional NA Block ×1 \(\rightarrow\)
+\textbf{temporal merging, 45\(\rightarrow\)23} &
+\texttt{{[}2048,23,15,26{]}} \\
+Stage 4 backbone & NA Block ×8, 2048 channels &
+\texttt{{[}2048,23,15,26{]}} \\
+Second temporal compression & Additional NA Block ×1 \(\rightarrow\)
+\textbf{temporal merging, 23\(\rightarrow\)12} &
+\texttt{{[}2048,12,15,26{]}} \\
+Exit & Position-wise Linear, \textbf{2048\(\rightarrow\)192} &
+\texttt{{[}192,12,15,26{]}} \\
+\end{longtable}
+}
+
+\endgroup
+
+Spatial compression consists of the 4× entry compression and three 2×
+spatial merging steps:
+
+\[
+4\times2\times2\times2=32.
+\]
+
+The temporal lengths are:
+
+\[
+45\rightarrow23\rightarrow12.
+\]
+
+The output is split into two groups along the channel dimension, each
+with shape \texttt{{[}96,12,15,26{]}}. Only the first group is taken as
+\textbf{\(\mu\)}. The mean \(\mu\) is then normalized using the
+per-channel means and standard deviations stored in the model.
+
+\Needspace{6\baselineskip}
+
+\subsection{5.4 Decoder: Reconstructing the Video Stage by
+Stage}\label{flux3-decoder}
+
+First undo the latent's per-channel normalization, then reconstruct the
+RGB video through Linear projections, NA Blocks, and spatiotemporal
+expansion. Shapes are written as \texttt{{[}C,T,H,W{]}}, omitting the
+batch dimension.
+
+\begingroup\NotesTableStyle\fontsize{10pt}{12pt}\selectfont\renewcommand{\arraystretch}{1.02}\setlength{\extrarowheight}{1pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.1700}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5500}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2800}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Step
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Module and operation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Output shape
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Input & Latent after undoing normalization &
+\texttt{{[}96,21,15,26{]}} \\
+Entry & Position-wise Linear, \textbf{96\(\rightarrow\)2048} &
+\texttt{{[}2048,21,15,26{]}} \\
+Stage 1 temporal expansion & NA Block ×8 \(\rightarrow\)
+\textbf{temporal expansion, 21\(\rightarrow\)41} \(\rightarrow\) NA
+Block ×1 & \texttt{{[}2048,41,15,26{]}} \\
+Stage 1 spatial expansion & \textbf{Spatial expansion,
+2048\(\rightarrow\)1024} & \texttt{{[}1024,41,30,52{]}} \\
+Stage 2 temporal expansion & NA Block ×8 \(\rightarrow\)
+\textbf{temporal expansion, 41\(\rightarrow\)81} \(\rightarrow\) NA
+Block ×1 & \texttt{{[}1024,81,30,52{]}} \\
+Stage 2 spatial expansion & \textbf{Spatial expansion,
+1024\(\rightarrow\)512} & \texttt{{[}512,81,60,104{]}} \\
+Stage 3 & NA Block ×4 \(\rightarrow\) \textbf{spatial expansion,
+512\(\rightarrow\)256} & \texttt{{[}256,81,120,208{]}} \\
+Stage 4 & NA Block ×1, retaining 256 channels &
+\texttt{{[}256,81,120,208{]}} \\
+Exit & Position-wise Linear, \textbf{256\(\rightarrow\)48} &
+\texttt{{[}48,81,120,208{]}} \\
+Unpatchify & Rearrange \textbf{48=3×4×4} channels into RGB pixel blocks
+& \texttt{{[}3,81,480,832{]}} \\
+\end{longtable}
+}
+
+\endgroup
+
+Each temporal expansion follows \textbf{\(T\rightarrow2T-1\)}, giving:
+
+\[
+21\rightarrow41\rightarrow81.
+\]
+
+\clearpage
+
+\subsection{5.5 Downsampling, Upsampling, and First-Frame
+Alignment}\label{flux3-sampling}
+
+\begingroup\NotesTableStyle\fontsize{10pt}{12pt}\selectfont\renewcommand{\arraystretch}{1.02}\setlength{\extrarowheight}{1pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Operation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Implementation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Shape change
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{Entry Patch Embedding} & \texttt{1×4×4\ Conv3d}, stride
+\texttt{1×4×4}, \textbf{3\(\rightarrow\)256} & Divide \(H,W\) by 4;
+\(T\) unchanged \\
+\textbf{Spatial merging} & Concatenate \texttt{2×2} neighboring
+positions: \texttt{C→4C} \(\rightarrow\) LayerNorm \(\rightarrow\)
+Linear, \textbf{4C\(\rightarrow\)2C} & Halve \(H,W\); double \(C\) \\
+\textbf{Temporal merging} & For odd lengths, repeat the first position
+at the beginning \(\rightarrow\) concatenate pairs of positions
+\(\rightarrow\) LayerNorm \(\rightarrow\) Linear,
+\textbf{2C\(\rightarrow\)C} \(\rightarrow\) add a shortcut containing
+the mean of the two positions & \(T\rightarrow\lceil T/2\rceil\);
+\(C,H,W\) unchanged \\
+\textbf{Spatial expansion} & LayerNorm \(\rightarrow\) Linear,
+\textbf{C\(\rightarrow\)4C\_out} \(\rightarrow\) rearrange into
+\texttt{2×2} spatial positions, where \texttt{C\_out=C/2} & Double
+\(H,W\); halve \(C\) \\
+\textbf{Temporal expansion} & LayerNorm \(\rightarrow\) Linear,
+\textbf{C\(\rightarrow\)2C} \(\rightarrow\) add a shortcut consisting of
+two copies of the input along the channel dimension \(\rightarrow\)
+rearrange into the time dimension \(\rightarrow\) remove the first
+position & \(T\rightarrow2T-1\); \(C,H,W\) unchanged \\
+\textbf{Spatial Unpatchify} & Rearrange the 48 channels at each position
+into a \texttt{3×4×4} pixel block & Multiply \(H,W\) by 4; output 3
+channels \\
+\end{longtable}
+}
+
+\endgroup
+
+\textbf{Execution order:}
+
+\begin{itemize}
+\tightlist
+\item
+  Encoder Stage 3: spatial merging \(\rightarrow\) additional NA Block
+  \(\rightarrow\) temporal merging. Stage 4 applies an additional NA
+  Block \(\rightarrow\) temporal merging after its backbone.
+\item
+  The first two Decoder stages: temporal expansion \(\rightarrow\)
+  additional NA Block \(\rightarrow\) spatial expansion.
+\end{itemize}
+
+\textbf{First-frame alignment:} encoding pads odd lengths by repeating
+the first position, while decoding restores alignment by removing the
+first position after expansion. Single-frame inputs also pass through
+these modules, but their length remains 1:
+
+\begin{verbatim}
+Encoder: 1 -> repeat to 2 -> merge to 1
+Decoder: 1 -> expand to 2 -> remove the first position, leaving 1
+\end{verbatim}
+
+After two temporal expansion steps, the output length is:
+
+\[
+T_{\mathrm{out}}=2(2T_z-1)-1=4(T_z-1)+1.
+\]
+
+\end{document}

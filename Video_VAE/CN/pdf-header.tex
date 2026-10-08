@@ -1,0 +1,69 @@
+\usepackage{fontspec}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{etoolbox}
+\usepackage{xurl}
+\usepackage{needspace}
+\setmainfont[Path=/usr/local/texlive/2026/texmf-dist/fonts/opentype/public/tex-gyre/,UprightFont=texgyrepagella-regular.otf,BoldFont=texgyrepagella-bold.otf,ItalicFont=texgyrepagella-italic.otf,BoldItalicFont=texgyrepagella-bolditalic.otf]{texgyrepagella-regular.otf}
+\setsansfont[Path=/usr/local/texlive/2026/texmf-dist/fonts/opentype/public/tex-gyre/,UprightFont=texgyreheros-regular.otf,BoldFont=texgyreheros-bold.otf,ItalicFont=texgyreheros-italic.otf,BoldItalicFont=texgyreheros-bolditalic.otf]{texgyreheros-regular.otf}
+\setmonofont[Path=/usr/local/texlive/2026/texmf-dist/fonts/opentype/SIL/jetbrainsmono-otf/,UprightFont=JetBrainsMono-Regular.otf,BoldFont=JetBrainsMono-Bold.otf,ItalicFont=JetBrainsMono-Italic.otf,BoldItalicFont=JetBrainsMono-BoldItalic.otf,Scale=0.85]{JetBrainsMono-Regular.otf}
+\setCJKmainfont[Path=/System/Library/Fonts/Supplemental/,FontIndex=6,BoldFont=Songti.ttc,BoldFeatures={FontIndex=1}]{Songti.ttc}
+\setCJKsansfont[Path=/System/Library/Fonts/,FontIndex=1,BoldFont={STHeiti Medium.ttc},BoldFeatures={FontIndex=1}]{STHeiti Light.ttc}
+\setCJKmonofont[Path=/System/Library/Fonts/,FontIndex=1]{STHeiti Light.ttc}
+\definecolor{notesblue}{HTML}{174A7E}
+\definecolor{notesgray}{HTML}{5D6773}
+\definecolor{noteslink}{HTML}{1769AA}
+\AtBeginDocument{\hypersetup{linkcolor=noteslink,urlcolor=noteslink,pdftitle={视频生成模型 VAE 对比笔记},pdfsubject={压缩参数、网络结构、因果性与分块解码}}}
+\ctexset{section={format=\Large\bfseries\sffamily\color{notesblue},beforeskip=1.5ex,afterskip=1ex},subsection={format=\large\bfseries\sffamily\color{notesblue},beforeskip=1.5ex,afterskip=1ex},subsubsection={format=\normalsize\bfseries\sffamily\color{notesblue},beforeskip=1.5ex,afterskip=0.5ex}}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em}
+\linespread{1.15}
+\setcounter{secnumdepth}{0}
+\setlist{leftmargin=2em,itemsep=0.2em}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\sffamily\color{notesgray}Video VAE / Architecture Notes}
+\fancyhead[R]{\small\sffamily\color{notesgray}Purshow\textquoteright{}s Notes}
+\fancyfoot[R]{\small\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+\newcommand{\NotesTitle}[1]{{\sffamily\bfseries\color{notesblue}\fontsize{25}{32}\selectfont #1\par}\vspace{2mm}{\color{notesblue}\rule{\linewidth}{0.8pt}}\vspace{2mm}}
+\newcommand{\NotesTableStyle}{\linespread{1}\fontsize{9.5pt}{13pt}\selectfont\setlength{\tabcolsep}{4pt}\renewcommand{\arraystretch}{1.1}\setlength{\extrarowheight}{5pt}\setlength{\LTpre}{5pt}\setlength{\LTpost}{6pt}\setlength{\parskip}{0pt}\emergencystretch=2em}
+\clubpenalty=10000
+\widowpenalty=10000
+\displaywidowpenalty=10000
+
+\clearcaptionsetup{table}
+
+% Switch page geometry inside this single document; page numbers stay continuous.
+\newcommand{\NotesWanLayout}{%
+  \clearpage
+  \newgeometry{layoutsize={210mm,297mm},margin=18mm,headheight=15pt}%
+  \setlength{\paperwidth}{210mm}%
+  \setlength{\paperheight}{297mm}%
+  \setlength{\pdfpagewidth}{210mm}%
+  \setlength{\pdfpageheight}{297mm}%
+  \fancyhfoffset{0pt}%
+  \fancyhead[L]{\small\sffamily\color{notesgray}Video VAE / Wan2.1 Details}%
+  \setlength{\parskip}{0.32em}%
+}
+
+\newcommand{\NotesHThreeLayout}{%
+  \clearpage
+  \fancyhead[L]{\small\sffamily\color{notesgray}Video VAE / MiniMax-H3 Details}%
+}
+
+\newcommand{\NotesLTXLayout}{%
+  \clearpage
+  \fancyhead[L]{\small\sffamily\color{notesgray}Video VAE / LTX-2.5 Details}%
+}
+
+\newcommand{\NotesFluxLayout}{%
+  \clearpage
+  \fancyhead[L]{\small\sffamily\color{notesgray}Video VAE / FLUX 3 Details}%
+  \linespread{1.08}\selectfont
+  \setlength{\parskip}{0.24em}%
+  \setlength{\abovedisplayskip}{6pt plus 2pt minus 2pt}%
+  \setlength{\belowdisplayskip}{6pt plus 2pt minus 2pt}%
+  \setlength{\abovedisplayshortskip}{3pt plus 2pt}%
+  \setlength{\belowdisplayshortskip}{3pt plus 2pt minus 2pt}%
+}

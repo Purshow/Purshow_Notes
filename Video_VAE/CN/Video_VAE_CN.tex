@@ -1,0 +1,1358 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\PassOptionsToPackage{dvipsnames,svgnames,x11names}{xcolor}
+\documentclass[
+  11pt,
+  a4paper,
+  fontset=none]{ctexart}
+\usepackage{xcolor}
+\usepackage[landscape,margin=18mm,headheight=15pt]{geometry}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{longtable,booktabs,array}
+\usepackage{caption}
+\captionsetup[table]{skip=6pt}
+\newcounter{none} % for unnumbered tables
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{fontspec}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{etoolbox}
+\usepackage{xurl}
+\usepackage{needspace}
+\setmainfont[Path=/usr/local/texlive/2026/texmf-dist/fonts/opentype/public/tex-gyre/,UprightFont=texgyrepagella-regular.otf,BoldFont=texgyrepagella-bold.otf,ItalicFont=texgyrepagella-italic.otf,BoldItalicFont=texgyrepagella-bolditalic.otf]{texgyrepagella-regular.otf}
+\setsansfont[Path=/usr/local/texlive/2026/texmf-dist/fonts/opentype/public/tex-gyre/,UprightFont=texgyreheros-regular.otf,BoldFont=texgyreheros-bold.otf,ItalicFont=texgyreheros-italic.otf,BoldItalicFont=texgyreheros-bolditalic.otf]{texgyreheros-regular.otf}
+\setmonofont[Path=/usr/local/texlive/2026/texmf-dist/fonts/opentype/SIL/jetbrainsmono-otf/,UprightFont=JetBrainsMono-Regular.otf,BoldFont=JetBrainsMono-Bold.otf,ItalicFont=JetBrainsMono-Italic.otf,BoldItalicFont=JetBrainsMono-BoldItalic.otf,Scale=0.85]{JetBrainsMono-Regular.otf}
+\setCJKmainfont[Path=/System/Library/Fonts/Supplemental/,FontIndex=6,BoldFont=Songti.ttc,BoldFeatures={FontIndex=1}]{Songti.ttc}
+\setCJKsansfont[Path=/System/Library/Fonts/,FontIndex=1,BoldFont={STHeiti Medium.ttc},BoldFeatures={FontIndex=1}]{STHeiti Light.ttc}
+\setCJKmonofont[Path=/System/Library/Fonts/,FontIndex=1]{STHeiti Light.ttc}
+\definecolor{notesblue}{HTML}{174A7E}
+\definecolor{notesgray}{HTML}{5D6773}
+\definecolor{noteslink}{HTML}{1769AA}
+\AtBeginDocument{\hypersetup{linkcolor=noteslink,urlcolor=noteslink,pdftitle={视频生成模型 VAE 对比笔记},pdfsubject={压缩参数、网络结构、因果性与分块解码}}}
+\ctexset{section={format=\Large\bfseries\sffamily\color{notesblue},beforeskip=1.5ex,afterskip=1ex},subsection={format=\large\bfseries\sffamily\color{notesblue},beforeskip=1.5ex,afterskip=1ex},subsubsection={format=\normalsize\bfseries\sffamily\color{notesblue},beforeskip=1.5ex,afterskip=0.5ex}}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em}
+\linespread{1.15}
+\setcounter{secnumdepth}{0}
+\setlist{leftmargin=2em,itemsep=0.2em}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\sffamily\color{notesgray}Video VAE / Architecture Notes}
+\fancyhead[R]{\small\sffamily\color{notesgray}Purshow\textquoteright{}s Notes}
+\fancyfoot[R]{\small\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+\newcommand{\NotesTitle}[1]{{\sffamily\bfseries\color{notesblue}\fontsize{25}{32}\selectfont #1\par}\vspace{2mm}{\color{notesblue}\rule{\linewidth}{0.8pt}}\vspace{2mm}}
+\newcommand{\NotesTableStyle}{\linespread{1}\fontsize{9.5pt}{13pt}\selectfont\setlength{\tabcolsep}{4pt}\renewcommand{\arraystretch}{1.1}\setlength{\extrarowheight}{5pt}\setlength{\LTpre}{5pt}\setlength{\LTpost}{6pt}\setlength{\parskip}{0pt}\emergencystretch=2em}
+\clubpenalty=10000
+\widowpenalty=10000
+\displaywidowpenalty=10000
+
+\clearcaptionsetup{table}
+
+% Switch page geometry inside this single document; page numbers stay continuous.
+\newcommand{\NotesWanLayout}{%
+  \clearpage
+  \newgeometry{layoutsize={210mm,297mm},margin=18mm,headheight=15pt}%
+  \setlength{\paperwidth}{210mm}%
+  \setlength{\paperheight}{297mm}%
+  \setlength{\pdfpagewidth}{210mm}%
+  \setlength{\pdfpageheight}{297mm}%
+  \fancyhfoffset{0pt}%
+  \fancyhead[L]{\small\sffamily\color{notesgray}Video VAE / Wan2.1 Details}%
+  \setlength{\parskip}{0.32em}%
+}
+
+\newcommand{\NotesHThreeLayout}{%
+  \clearpage
+  \fancyhead[L]{\small\sffamily\color{notesgray}Video VAE / MiniMax-H3 Details}%
+}
+
+\newcommand{\NotesLTXLayout}{%
+  \clearpage
+  \fancyhead[L]{\small\sffamily\color{notesgray}Video VAE / LTX-2.5 Details}%
+}
+
+\newcommand{\NotesFluxLayout}{%
+  \clearpage
+  \fancyhead[L]{\small\sffamily\color{notesgray}Video VAE / FLUX 3 Details}%
+  \linespread{1.08}\selectfont
+  \setlength{\parskip}{0.24em}%
+  \setlength{\abovedisplayskip}{6pt plus 2pt minus 2pt}%
+  \setlength{\belowdisplayskip}{6pt plus 2pt minus 2pt}%
+  \setlength{\abovedisplayshortskip}{3pt plus 2pt}%
+  \setlength{\belowdisplayshortskip}{3pt plus 2pt minus 2pt}%
+}
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+% fallback for those not using the hyperref driver hyperxmp:
+\makeatletter
+\@ifundefined{xmpquote}{\newcommand{\xmpquote}[1]{#1}}{}
+\makeatother
+\hypersetup{
+  colorlinks=true,
+  linkcolor={Maroon},
+  filecolor={Maroon},
+  citecolor={Blue},
+  urlcolor={Blue},
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\setlength{\parskip}{3pt}{\sffamily\bfseries\color{notesblue}\fontsize{23}{27}\selectfont 视频生成模型 VAE\par}\vspace{1mm}{\color{notesblue}\rule{\linewidth}{0.8pt}}\vspace{1mm}
+
+\section{1. 压缩参数与 DiT token
+数}\label{ux538bux7f29ux53c2ux6570ux4e0e-dit-token-ux6570}
+
+倍率按\textbf{时间 × 高度 × 宽度}排列，\(C\) 为 VAE 通道数。末列为
+\textbf{DiT patchify 后、投影前}的形状，patch 内元素并入通道维。
+
+\[
+R_{\mathrm{nom}}=\frac{3r_t r_h r_w}{C},\qquad
+R_{\mathrm{actual}}=\frac{3THW}{C\,T_zH_zW_z},\qquad
+N=\frac{T_zH_zW_z}{p_tp_hp_w}.
+\]
+
+DiT patch 为 \(p_t\times p_h\times p_w\)，只重排元素；压缩比按 VAE
+输出计算，已计入 VAE 内部 patchify。
+
+\begingroup\NotesTableStyle\fontsize{9.5pt}{12pt}\selectfont\renewcommand{\arraystretch}{1.0}\setlength{\extrarowheight}{1pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.1200}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.3500}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0850}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0650}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0850}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.0850}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 12\tabcolsep) * \real{0.2100}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+模型
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+VAE
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+时间 × 高 × 宽压缩
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Latent\\
+通道 \(C\)\strut
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+元素压缩比 \(R_{\mathrm{nom}}\)
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+DiT patchify
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+DiT 输入形状
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{MiniMax H3} & \begin{minipage}[t]{\linewidth}\raggedright
+\textbf{H3-VisualVAE}\\
+因果 3D CNN encoder + \textbf{非因果 ViT
+decoder}；一次投影恢复时空像素块。\strut
+\end{minipage} & \textbf{\(4\times16\times16\)} & \textbf{24} &
+\textbf{128:1} & \(1\times2\times2\) &
+\(\left[B,96,T_{\mathrm{H3}},\frac{H}{32},\frac{W}{32}\right]\) \\
+\textbf{LTX-2.5} & \begin{minipage}[t]{\linewidth}\raggedright
+\textbf{LTX-2.5 Video VAE}\\
+因果 3D CNN encoder + \textbf{非因果 3D CNN / NA Transformer 扩散
+decoder}（CNN 按默认配置）；空间 patchify ×4；扩散版单步像素去噪。\strut
+\end{minipage} & \textbf{\(8\times32\times32\)} & \textbf{128} &
+\textbf{192:1} & \(1\times1\times1\) &
+\(\left[B,128,1+\frac{T-1}{8},\frac{H}{32},\frac{W}{32}\right]\) \\
+\textbf{FLUX 3 Action} & \begin{minipage}[t]{\linewidth}\raggedright
+\textbf{FLUX 3 Video VAE}\\
+因果 NA Transformer encoder + \textbf{非因果 NA Transformer
+decoder}；\texttt{5×5×5} 邻域 attention。\strut
+\end{minipage} & \textbf{\(4\times32\times32\)} & \textbf{96} &
+\textbf{128:1} & \(1\times1\times1\) &
+\(\left[B,96,1+\frac{T-1}{4},\frac{H}{32},\frac{W}{32}\right]\) \\
+\textbf{Wan 2.1 / 2.2 A14B / Lingbot-Video} &
+\begin{minipage}[t]{\linewidth}\raggedright
+\textbf{Wan2.1-VAE}\\
+因果 3D CNN encoder + 因果 3D CNN decoder；帧内空间
+attention、逐层历史缓存。\strut
+\end{minipage} & \textbf{\(4\times8\times8\)} & \textbf{16} &
+\textbf{48:1} & \(1\times2\times2\) &
+\(\left[B,64,1+\frac{T-1}{4},\frac{H}{16},\frac{W}{16}\right]\) \\
+\textbf{Wan 2.2 TI2V-5B} & \begin{minipage}[t]{\linewidth}\raggedright
+\textbf{Wan2.2-VAE}\\
+因果 3D CNN encoder + 因果 3D CNN decoder；空间 patchify ×2、残差采样
+shortcut。\strut
+\end{minipage} & \textbf{\(4\times16\times16\)} & \textbf{48} &
+\textbf{64:1} & \(1\times2\times2\) &
+\(\left[B,192,1+\frac{T-1}{4},\frac{H}{32},\frac{W}{32}\right]\) \\
+\textbf{HunyuanVideo-1.5} & \begin{minipage}[t]{\linewidth}\raggedright
+\textbf{AutoencoderKLConv3D}\\
+因果 3D CNN encoder + 因果 3D CNN decoder；瓶颈因果 attention、残差式 3D
+pixel shuffle。\strut
+\end{minipage} & \textbf{\(4\times16\times16\)} & \textbf{32} &
+\textbf{96:1} & \(1\times1\times1\) &
+\(\left[B,32,1+\frac{T-1}{4},\frac{H}{16},\frac{W}{16}\right]\) \\
+\textbf{MAGI-2 Preview} & \begin{minipage}[t]{\linewidth}\raggedright
+\textbf{Wan2.2-VAE + TurboVAED}\\
+因果 3D CNN encoder + \textbf{非因果 3D CNN 蒸馏 decoder}。\strut
+\end{minipage} & \textbf{\(4\times16\times16\)} & \textbf{48} &
+\textbf{64:1} & \(1\times1\times1\) &
+\(\left[B,48,1+\frac{T-1}{4},\frac{H}{16},\frac{W}{16}\right]\) \\
+\end{longtable}
+}
+
+\endgroup
+
+\textbf{H3 的时间压缩比较特殊，严格来说并不是 4:1，元素压缩比也要比
+128:1 小一些。}
+
+\NotesWanLayout
+
+\section{2. Wan2.1-VAE}\label{wan21}
+
+接着我们具体介绍一下应该是最经典的 VAE：Wan2.1-VAE。以 \textbf{81
+帧、480×832} 的 RGB 视频为例：
+
+\textbf{整段视频：}\texttt{{[}3,81,480,832{]}} \(\rightarrow\)
+\textbf{latent：}\texttt{{[}16,21,60,104{]}} \(\rightarrow\)
+\textbf{重建视频：}\texttt{{[}3,81,480,832{]}}。
+
+\[
+T_z=1+\frac{81-1}{4}=21,\qquad H_z=\frac{480}{8}=60,\qquad W_z=\frac{832}{8}=104.
+\]
+
+\Needspace{8\baselineskip}
+
+\subsection{2.1 Encoder：跟踪后续的 4 帧视频块}\label{wan21-encoder}
+
+整段视频按 \textbf{1、4、4\ldots\ldots 帧}分成 \textbf{21 个块}：1
+个首帧块，加上 20 个后续块，Wan2.1-VAE 会做 Feature
+Cache，保留前面块的历史特征。下面我们用一个后续块来看看 Wan2.1-VAE
+的具体 forward 过程：
+
+\begingroup\NotesTableStyle\fontsize{10.5pt}{14pt}\selectfont\renewcommand{\arraystretch}{1.08}\setlength{\extrarowheight}{3pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.1300}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5900}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2800}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+顺序
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+模块与操作
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+输出形状
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+输入 & 当前视频块 & \texttt{{[}3,4,480,832{]}} \\
+入口 & 因果卷积 \textbf{3\(\rightarrow\)96} &
+\texttt{{[}96,4,480,832{]}} \\
+第一级 & 残差块 ×2，输出 96 通道 \(\rightarrow\) \textbf{空间下采样} &
+\texttt{{[}96,4,240,416{]}} \\
+第二级 & 残差块 ×2，输出 192 通道 \(\rightarrow\) \textbf{时空下采样} &
+\texttt{{[}192,2,120,208{]}} \\
+第三级 & 残差块 ×2，输出 384 通道 \(\rightarrow\) \textbf{时空下采样} &
+\texttt{{[}384,1,60,104{]}} \\
+第四级 & 残差块 ×2，输出 384 通道 & \texttt{{[}384,1,60,104{]}} \\
+瓶颈 & 残差块 \(\rightarrow\) 空间 Attention \(\rightarrow\) 残差块 &
+\texttt{{[}384,1,60,104{]}} \\
+出口 & RMSNorm \(\rightarrow\) SiLU \(\rightarrow\) 因果卷积
+\textbf{384\(\rightarrow\)32} & \texttt{{[}32,1,60,104{]}} \\
+\end{longtable}
+}
+
+\endgroup
+
+全部 21 个块编码完成后，先沿时间维拼接，经过一个 \texttt{1×1×1}
+卷积，再拆分为 \(\mu\) 和 \texttt{log\_var}，各为
+\texttt{{[}16,21,60,104{]}}，对 \(\mu\) 按通道标准化后作为输入。
+
+\Needspace{8\baselineskip}
+
+\subsection{2.2 Decoder：跟踪后续的 latent 时间步}\label{wan21-decoder}
+
+先对完整 latent \textbf{撤销标准化}，经过 \textbf{\texttt{1×1×1}
+卷积，16\(\rightarrow\)16}，形状仍为
+\texttt{{[}16,21,60,104{]}}。随后逐个 latent
+时间位置解码；下表跟踪一个后续时间步：
+
+\begingroup\NotesTableStyle\fontsize{10.5pt}{14pt}\selectfont\renewcommand{\arraystretch}{1.08}\setlength{\extrarowheight}{3pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.1300}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5900}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2800}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+顺序
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+模块与操作
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+输出形状
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+输入 & 撤销标准化后的 latent 块 & \texttt{{[}16,1,60,104{]}} \\
+入口 & 因果卷积 \textbf{16\(\rightarrow\)384} &
+\texttt{{[}384,1,60,104{]}} \\
+瓶颈 & 残差块 \(\rightarrow\) 空间 Attention \(\rightarrow\) 残差块 &
+\texttt{{[}384,1,60,104{]}} \\
+第一级 & 残差块 ×3，输出 384 通道 \(\rightarrow\)
+\textbf{时空上采样，384\(\rightarrow\)192} &
+\texttt{{[}192,2,120,208{]}} \\
+第二级 & 残差块 ×3，先将 \textbf{192 升至 384} \(\rightarrow\)
+\textbf{时空上采样，384\(\rightarrow\)192} &
+\texttt{{[}192,4,240,416{]}} \\
+第三级 & 残差块 ×3，输出 192 通道 \(\rightarrow\)
+\textbf{空间上采样，192\(\rightarrow\)96} &
+\texttt{{[}96,4,480,832{]}} \\
+第四级 & 残差块 ×3，输出 96 通道 & \texttt{{[}96,4,480,832{]}} \\
+出口 & RMSNorm \(\rightarrow\) SiLU \(\rightarrow\) 因果卷积
+\textbf{96\(\rightarrow\)3} & \texttt{{[}3,4,480,832{]}} \\
+\end{longtable}
+}
+
+\endgroup
+
+其中，首帧会跳过时间重采样，只输出 \textbf{1 帧}。
+
+\Needspace{8\baselineskip}
+
+\subsection{2.3 上下采样}\label{wan21-sampling}
+
+\begingroup\NotesTableStyle\fontsize{10.5pt}{14pt}\selectfont\renewcommand{\arraystretch}{1.08}\setlength{\extrarowheight}{3pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+操作
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+具体实现
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+形状变化
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{空间下采样} & 逐帧右侧、下侧补 1 \(\rightarrow\)
+\texttt{3×3\ Conv2d}，\texttt{stride=2} & \(H,W\) 各减半；\(C,T\)
+不变 \\
+\textbf{时间下采样} & 拼接 \textbf{1 帧历史缓存} \(\rightarrow\)
+\texttt{3×1×1} 时间卷积，时间步长 2 & 后续块 \(T\) 减半；\(C,H,W\)
+不变 \\
+\textbf{空间上采样} & 逐帧最近邻插值
+×2（\texttt{nearest-exact}）\(\rightarrow\)
+\texttt{3×3\ Conv2d}，\(C\rightarrow C/2\) & \(H,W\) 各翻倍，\(C\)
+减半；\(T\) 不变 \\
+\textbf{时间上采样} & \texttt{3×1×1} 因果卷积，\(C\rightarrow2C\)
+\(\rightarrow\) 将两组通道重排到时间维 & 后续块 \(T\) 翻倍；最终
+\(C,H,W\) 不变 \\
+\end{longtable}
+}
+
+\endgroup
+
+\textbf{执行顺序：}时空下采样是 \textbf{先空间、后时间}；时空上采样是
+\textbf{先时间、后空间}。
+
+\Needspace{8\baselineskip}
+
+\subsubsection{残差块、缓存与
+Attention}\label{ux6b8bux5deeux5757ux7f13ux5b58ux4e0e-attention}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{残差块：}主分支执行两组``RMSNorm \(\rightarrow\) SiLU
+  \(\rightarrow\) \texttt{3×3×3} 因果卷积''，再加
+  shortcut；通道不同时，shortcut 通过 \texttt{1×1×1}
+  卷积对齐。残差块保持 \(T,H,W\)。
+\item
+  \textbf{因果卷积缓存：}普通时间核为 3、步长为 1 的因果卷积，需要前
+  \textbf{2
+  个时间位置}的特征；序列开头不足处补零。缓存由各层分别维护，时间位置以该层分辨率为准。上表时间下采样使用的是单独的
+  \textbf{1 帧缓存}路径。
+\item
+  \textbf{帧内空间 Attention：}只在同一时间位置的二维特征图上计算，保持
+  \texttt{{[}C,T,H,W{]}}；跨时间的信息通过因果卷积传递。
+\end{itemize}
+
+以 Wan2.1-VAE 为基础，我们简单介绍一下其他后续模型。
+
+Wan2.2-VAE 延续了 Wan2.1-VAE 的因果卷积和 \(4n+1\)
+处理方式，时间压缩倍率仍为 4。主要变化是入口新增 \texttt{2×2}
+patchify，将空间位置重排到通道维，再经过三次空间下采样，使空间压缩从 8×8
+提升到 16×16，同时将 latent 通道数从 16 增加到 48。结构上，Wan2.2
+加宽了编码器和解码器：编码器基础通道数从 96 增至 160，瓶颈通道数从 384
+增至 640；解码器基础通道数从 96 增至 256，瓶颈通道数从 384 增至
+1024。同时，在原有残差块之外，为整个采样级增加
+shortcut：下采样通过重排与 Avgpool 对齐形状，上采样通过重排与
+copy对齐形状，再与主分支相加。
+
+HunyuanVideo-1.5 保持 4× 时间压缩，将空间高宽各自的压缩倍率从 8× 提高到
+16×，latent channels 从 16 增至 32。相比 Wan 的分离式时空采样，它采用
+causal convolution 加 PixelShuffle/Unshuffle 式重排，并在采样模块和
+latent 两端的投影中增加 residual shortcuts。中间 Attention 则从帧内的
+spatial attention 扩展为 spatiotemporal causal
+attention，能够直接关注当前及历史帧，实现跨帧信息交互。
+
+\NotesHThreeLayout
+
+\section{3. MiniMax-H3 VAE}\label{minimax-h3}
+
+接着来看 MiniMax-H3 VAE。MiniMax H3 的默认视频分块规则要求长度对齐到
+\textbf{\(17n+5\)}（H3
+在这方面的处理非常神奇，虽然我想过一些可能的原因，但是还没找到官方依据），如果原视频是
+\textbf{81 帧（\(4d+1\)）}，本例先\textbf{复制末帧补到 90
+帧}，重建后裁掉末尾 9 帧。
+
+\textbf{整段视频：}\texttt{{[}3,90,480,832{]}} \(\rightarrow\)
+\textbf{latent：}\texttt{{[}24,27,30,52{]}} \(\rightarrow\)
+\textbf{重建视频：}\texttt{{[}3,90,480,832{]}}。
+
+\[
+90=17\times5+5,\qquad T_z=5\times5+2=27,\qquad H_z=\frac{480}{16}=30,\qquad W_z=\frac{832}{16}=52.
+\]
+
+\Needspace{8\baselineskip}
+
+\subsection{3.1 Encoder：跟踪一个 17 帧视频块}\label{h3-encoder}
+
+编码时，90 帧还会在内部复制末帧，临时补到 \textbf{102 帧}，再分成
+\textbf{6 个 17 帧块}独立编码。
+
+\begingroup\NotesTableStyle\fontsize{10.5pt}{14pt}\selectfont\renewcommand{\arraystretch}{1.08}\setlength{\extrarowheight}{3pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.1300}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5900}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2800}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+顺序
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+模块与操作
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+输出形状
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+输入 & 当前视频块 & \texttt{{[}3,17,480,832{]}} \\
+入口 & \texttt{3×3×3} 因果卷积，\textbf{3\(\rightarrow\)128} &
+\texttt{{[}128,17,480,832{]}} \\
+第一级 & 残差块 ×2，输出 128 通道 \(\rightarrow\) \textbf{空间下采样} &
+\texttt{{[}128,17,240,416{]}} \\
+第二级 & 残差块 ×2，输出 256 通道 \(\rightarrow\) \textbf{时空下采样} &
+\texttt{{[}256,9,120,208{]}} \\
+第三级 & 残差块 ×2，输出 256 通道 \(\rightarrow\) \textbf{时空下采样} &
+\texttt{{[}256,5,60,104{]}} \\
+第四级 & 残差块 ×2，输出 512 通道 \(\rightarrow\) \textbf{空间下采样} &
+\texttt{{[}512,5,30,52{]}} \\
+第五级 & 残差块 ×2，输出 512 通道 & \texttt{{[}512,5,30,52{]}} \\
+第六级 & 残差块 ×2，输出 1024 通道 & \texttt{{[}1024,5,30,52{]}} \\
+出口 & GroupNorm \(\rightarrow\) SiLU \(\rightarrow\)
+因果卷积，\textbf{1024\(\rightarrow\)48} & \texttt{{[}48,5,30,52{]}} \\
+分布投影 & \texttt{1×1×1} 卷积，\textbf{48\(\rightarrow\)48} &
+\texttt{{[}48,5,30,52{]}} \\
+\end{longtable}
+}
+
+\endgroup
+
+两次时间下采样均向上取整，时间长度依次为
+\textbf{\(17\rightarrow9\rightarrow5\)}。全部 6
+个块编码完成后，沿时间维拼接得到 \texttt{{[}48,30,30,52{]}}，再按
+\texttt{token\_drop=3} \textbf{从整段末尾丢弃 3 个时间位置}，得到
+\texttt{{[}48,27,30,52{]}}（丢弃的部分对应复制的 12 个末帧）。
+
+随后拆分为 \(\mu\) 和 \texttt{log\_var}，各为
+\texttt{{[}24,27,30,52{]}}；从后验分布采样得到 latent，再按通道标准化。
+
+\Needspace{8\baselineskip}
+
+\subsection{3.2 Decoder：跟踪一个 latent 窗口}\label{h3-decoder}
+
+先对完整 latent \textbf{撤销标准化}，再按 \textbf{7
+个时间位置一窗、每次前进 5 个位置}解码，相邻窗口重叠 2
+个位置。下面跟踪其中一个 \texttt{{[}24,7,30,52{]}} 的窗口；其视频 token
+数和隐藏维度分别为：
+
+\[
+N=7\times30\times52=10920,\qquad D=32\times64=2048.
+\]
+
+\begingroup\NotesTableStyle\fontsize{10.5pt}{14pt}\selectfont\renewcommand{\arraystretch}{1.08}\setlength{\extrarowheight}{3pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.1300}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5900}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2800}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+顺序
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+模块与操作
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+输出形状
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+输入 & 撤销标准化后的 latent 窗口 & \texttt{{[}24,7,30,52{]}} \\
+入口 & \texttt{1×1×1} 卷积，\textbf{24\(\rightarrow\)24} &
+\texttt{{[}24,7,30,52{]}} \\
+展平 & 每个时空位置转为一个 token & \texttt{{[}10920,24{]}} \\
+特征投影 & Linear，\textbf{24\(\rightarrow\)2048} &
+\texttt{{[}10920,2048{]}} \\
+附加 token & 追加 \textbf{4 个 register token + 1 个初始为零的
+token}（牢 CV 操作） & \texttt{{[}10925,2048{]}} \\
+主体 & Transformer block ×36，3D RoPE & \texttt{{[}10925,2048{]}} \\
+出口 & LayerNorm \(\rightarrow\)
+Linear，\textbf{2048\(\rightarrow\)3072} & \texttt{{[}10925,3072{]}} \\
+去除附加 token & 保留视频 token & \texttt{{[}10920,3072{]}} \\
+像素重排 & 每个 token 展开成 \textbf{\texttt{4×16×16} RGB 块} &
+\texttt{{[}3,28,480,832{]}} \\
+\end{longtable}
+}
+
+\endgroup
+
+出口将每个视频 token 投影为 \textbf{\(3072=3\times4\times16\times16\)}
+个值，再重排成一个 \texttt{4×16×16} RGB 块。因此，一个窗口先得到
+\texttt{{[}3,28,480,832{]}}，随后还要做时间裁剪和窗口融合。
+
+\Needspace{8\baselineskip}
+
+\subsubsection{时间裁剪与整段拼接}\label{h3-time-stitch}
+
+每个窗口输出的 28 帧先分成前 \textbf{20 帧}和后 \textbf{8
+帧}，两部分各裁掉开头 3 帧，留下 \textbf{17 帧主体 + 5 帧重叠区域}。
+
+27 个 latent 时间位置共形成 \textbf{5 个窗口}。从 0
+开始计数，窗口范围依次为
+\texttt{0-6}、\texttt{5-11}、\texttt{10-16}、\texttt{15-21}、\texttt{20-26}。每窗保留
+22 帧，相邻窗口融合重叠的 5 帧，最终得到：
+
+\[
+5\times22-4\times5=90\text{ 帧}.
+\]
+
+融合后的形状为 \texttt{{[}3,90,480,832{]}}。再裁掉本例额外补入的末尾 9
+帧，即恢复为 \texttt{{[}3,81,480,832{]}}。
+
+\Needspace{8\baselineskip}
+
+\subsection{3.3 下采样与像素展开}\label{h3-operations}
+
+\begingroup\NotesTableStyle\fontsize{10.5pt}{14pt}\selectfont\renewcommand{\arraystretch}{1.08}\setlength{\extrarowheight}{3pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+操作
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+具体实现
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+形状变化
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{空间下采样} & 右、下各反射补 1 \(\rightarrow\) \texttt{3×3×3}
+因果卷积，步长 \texttt{(1,2,2)} & \(H,W\) 各减半；\(C,T\) 不变 \\
+\textbf{时空下采样} & 右、下各反射补 1 \(\rightarrow\) \texttt{3×3×3}
+因果卷积，步长 \texttt{(2,2,2)} & \(H,W\)
+各减半；\(T\to\lceil T/2\rceil\)；\(C\) 不变 \\
+\textbf{像素展开} & Linear \(\rightarrow\) 时空重排 & 每个视频 token
+输出一个 \texttt{4×16×16} RGB 块 \\
+\end{longtable}
+}
+
+\endgroup
+
+\textbf{下采样顺序：}空间 \(\rightarrow\) 时空 \(\rightarrow\) 时空
+\(\rightarrow\)
+空间，分别位于前四级末尾。两种下采样中的时间卷积都在左侧补 2 个零位置。
+
+\Needspace{8\baselineskip}
+
+\subsubsection{残差块、归一化与
+Attention}\label{ux6b8bux5deeux5757ux5f52ux4e00ux5316ux4e0e-attention}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{残差块：}主分支执行两组``GroupNorm \(\rightarrow\) SiLU
+  \(\rightarrow\) \texttt{3×3×3} 因果卷积''，再加
+  shortcut；通道不同时，shortcut 通过 \texttt{1×1×1}
+  卷积对齐。残差块保持 \(T,H,W\)。
+\item
+  \textbf{因果编码：}时间卷积只在左侧补零，GroupNorm
+  按时间位置独立计算。各个 17 帧块独立进入 Encoder。
+\item
+  \textbf{ViT 解码块：}依次执行 RMSNorm \(\rightarrow\) Attention，以及
+  RMSNorm \(\rightarrow\) 门控 SiLU
+  FFN；两个分支分别经过可学习缩放后加回残差，保持
+  \texttt{{[}N,2048{]}}。
+\item
+  \textbf{Attention 范围：}发布配置中的 ViT Decoder
+  为非因果结构，可以同时关注当前窗口内的各个时间位置。
+\end{itemize}
+
+\NotesLTXLayout
+
+\section{4. LTX-2.5 Video VAE}\label{ltx25}
+
+接着来看 LTX-2.5 的视频 VAE。它采用\textbf{因果 3D CNN
+Encoder}，提供两种 Decoder：\textbf{非因果 3D CNN
+解码器}和\textbf{非因果 NA Transformer 扩散解码器}。两者使用相同的
+latent 空间，时间压缩倍率为 \textbf{8}，空间高宽各压缩 \textbf{32}
+倍，latent 通道数为 \textbf{128}。
+
+同样以 \textbf{81 帧、480×832} 的 RGB 视频为例，形状统一写作
+\texttt{{[}C,T,H,W{]}}，省略 \texttt{B=1}：
+
+\textbf{整段视频：}\texttt{{[}3,81,480,832{]}} \(\rightarrow\)
+\textbf{latent：}\texttt{{[}128,11,15,26{]}} \(\rightarrow\)
+\textbf{重建视频：}\texttt{{[}3,81,480,832{]}}。
+
+\[
+T_z=1+\frac{81-1}{8}=11,\qquad H_z=\frac{480}{32}=15,\qquad W_z=\frac{832}{32}=26.
+\]
+
+下面跟踪整段视频的 forward
+过程。分块与重叠融合属于另外的执行策略，不将视频预先视为 11
+个独立编码、解码的小块。
+
+\Needspace{8\baselineskip}
+
+\subsection{4.1 Encoder：跟踪整段 81 帧视频}\label{ltx25-encoder}
+
+入口先做 \textbf{4×4 空间 patchify}：将每帧相邻的 16
+个像素位置重排到通道维，时间长度不变。随后经过\textbf{空间
+\(\rightarrow\) 时间 \(\rightarrow\) 时空 \(\rightarrow\)
+时空}四级下采样。
+
+\begingroup\NotesTableStyle\fontsize{10.5pt}{14pt}\selectfont\renewcommand{\arraystretch}{1.08}\setlength{\extrarowheight}{3pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.1300}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5900}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2800}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+顺序
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+模块与操作
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+输出形状
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+输入 & RGB 视频 & \texttt{{[}3,81,480,832{]}} \\
+Patchify & 空间 \texttt{4×4} 重排，\textbf{3\(\rightarrow\)48} &
+\texttt{{[}48,81,120,208{]}} \\
+入口 & \texttt{3×3×3} 因果卷积，\textbf{48\(\rightarrow\)128} &
+\texttt{{[}128,81,120,208{]}} \\
+第一级 & 残差块 ×4，128 通道 \(\rightarrow\)
+\textbf{空间下采样，128\(\rightarrow\)256} &
+\texttt{{[}256,81,60,104{]}} \\
+第二级 & 残差块 ×6，256 通道 \(\rightarrow\)
+\textbf{时间下采样，256\(\rightarrow\)512} &
+\texttt{{[}512,41,60,104{]}} \\
+第三级 & 残差块 ×4，512 通道 \(\rightarrow\)
+\textbf{时空下采样，512\(\rightarrow\)1024} &
+\texttt{{[}1024,21,30,52{]}} \\
+第四级 & 残差块 ×2，1024 通道 \(\rightarrow\)
+\textbf{时空下采样，1024\(\rightarrow\)1024} &
+\texttt{{[}1024,11,15,26{]}} \\
+瓶颈 & 残差块 ×2，1024 通道 & \texttt{{[}1024,11,15,26{]}} \\
+出口 & PixelNorm \(\rightarrow\) SiLU \(\rightarrow\)
+因果卷积，\textbf{1024\(\rightarrow\)129} &
+\texttt{{[}129,11,15,26{]}} \\
+\end{longtable}
+}
+
+\endgroup
+
+三次时间下采样均保留首帧对应的位置，时间长度依次为：
+
+\[
+81\rightarrow41\rightarrow21\rightarrow11.
+\]
+
+卷积头输出的前 \textbf{128 个通道是
+\(\mu\)}。类似地，再使用逐通道均值和标准差归一化，得到
+\texttt{{[}128,11,15,26{]}}。只是这里相比其他的 VAE 没有额外的
+\texttt{1×1×1} 分布投影卷积。
+
+\clearpage
+
+\subsection{4.2 CNN Decoder：逐级恢复视频}\label{ltx25-conv-decoder}
+
+先撤销 latent 的逐通道归一化，再经过卷积残差块和四级上采样，最后通过
+unpatchify 恢复 RGB 像素。
+
+\begingroup\NotesTableStyle\fontsize{10.5pt}{14pt}\selectfont\renewcommand{\arraystretch}{1.08}\setlength{\extrarowheight}{3pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.1300}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5900}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2800}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+顺序
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+模块与操作
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+输出形状
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+输入 & 撤销归一化后的 latent & \texttt{{[}128,11,15,26{]}} \\
+入口 & \texttt{3×3×3} 卷积，\textbf{128\(\rightarrow\)1024} &
+\texttt{{[}1024,11,15,26{]}} \\
+第一级 & 残差块 ×2，1024 通道 \(\rightarrow\)
+\textbf{时空上采样，1024\(\rightarrow\)512} &
+\texttt{{[}512,21,30,52{]}} \\
+第二级 & 残差块 ×2，512 通道 \(\rightarrow\)
+\textbf{时空上采样，512\(\rightarrow\)512} &
+\texttt{{[}512,41,60,104{]}} \\
+第三级 & 残差块 ×4，512 通道 \(\rightarrow\)
+\textbf{时间上采样，512\(\rightarrow\)256} &
+\texttt{{[}256,81,60,104{]}} \\
+第四级 & 残差块 ×6，256 通道 \(\rightarrow\)
+\textbf{空间上采样，256\(\rightarrow\)128} &
+\texttt{{[}128,81,120,208{]}} \\
+第五级 & 残差块 ×4，128 通道 & \texttt{{[}128,81,120,208{]}} \\
+出口 & PixelNorm \(\rightarrow\) SiLU \(\rightarrow\) \texttt{3×3×3}
+卷积，\textbf{128\(\rightarrow\)48} & \texttt{{[}48,81,120,208{]}} \\
+Unpatchify & 将通道重排成 \texttt{4×4}
+空间像素块，\textbf{48\(\rightarrow\)3} & \texttt{{[}3,81,480,832{]}} \\
+\end{longtable}
+}
+
+\endgroup
+
+时间上采样先将长度翻倍，再删除最前面的一个时间位置，因此每次为
+\textbf{\(T\rightarrow2T-1\)}：
+
+\[
+11\rightarrow21\rightarrow41\rightarrow81.
+\]
+
+该 Decoder 的卷积以\textbf{非因果模式}执行，能够利用前后时间位置的信息。
+
+\Needspace{8\baselineskip}
+
+\subsection{4.3 扩散
+Decoder：条件特征与像素去噪}\label{ltx25-diffusion-decoder}
+
+它先将 latent 上采样为条件特征 \textbf{context}，再以 context
+为条件，对像素噪声进行重建，\textbf{1 次去噪、直接预测重建视频
+\(x_0\)}。
+
+\Needspace{8\baselineskip}
+
+\subsubsection{生成条件特征}\label{ltx25-context}
+
+官方实现会将最后一个 latent 时间位置额外复制 \textbf{2 次}，用于处理邻域
+Attention 的末端边界。我们计入这部分临时补帧，并在最后裁掉。
+
+\begingroup\NotesTableStyle\fontsize{10.5pt}{14pt}\selectfont\renewcommand{\arraystretch}{1.08}\setlength{\extrarowheight}{3pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.1300}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5900}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2800}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+顺序
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+模块与操作
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+输出形状
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+输入 & 撤销归一化后的 latent & \texttt{{[}128,11,15,26{]}} \\
+边界处理 & 将最后一个 latent 时间位置额外复制 2 次 &
+\texttt{{[}128,13,15,26{]}} \\
+入口 & 逐位置 Linear，\textbf{128\(\rightarrow\)2048} &
+\texttt{{[}2048,13,15,26{]}} \\
+第一级 & NA Block ×4 \(\rightarrow\)
+\textbf{空间上采样，2048\(\rightarrow\)1024} &
+\texttt{{[}1024,13,30,52{]}} \\
+第二级 & NA Block ×6 \(\rightarrow\)
+\textbf{时间上采样，1024\(\rightarrow\)512} &
+\texttt{{[}512,25,30,52{]}} \\
+第三级 & NA Block ×4 \(\rightarrow\)
+\textbf{时空上采样，512\(\rightarrow\)512} &
+\texttt{{[}512,49,60,104{]}} \\
+第四级 & NA Block ×2 \(\rightarrow\)
+\textbf{时空上采样，512\(\rightarrow\)256} &
+\texttt{{[}256,97,120,208{]}} \\
+裁剪 & 去掉临时补帧对应的末尾 \textbf{16 个时间位置} &
+\texttt{{[}256,81,120,208{]}} \\
+\end{longtable}
+}
+
+\endgroup
+
+补入的 2 个 latent 时间位置经过 8 倍时间展开，对应 \textbf{16
+个时间位置}，因此裁剪后为 \textbf{\(97-16=81\)}。得到的 context
+已经具有目标视频的时间长度，空间分辨率仍是目标的 \textbf{1/4×1/4}。
+
+\clearpage
+
+\subsubsection{像素去噪与重建}\label{ltx25-pixel-decode}
+
+初始化与目标视频同形状的随机像素噪声。下面跟踪像素特征分支，context
+在各个扩散块中作为条件注入。
+
+\begingroup\NotesTableStyle\fontsize{10.5pt}{14pt}\selectfont\renewcommand{\arraystretch}{1.08}\setlength{\extrarowheight}{3pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.1300}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5900}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2800}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+顺序
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+模块与操作
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+输出形状
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+输入 & 随机像素噪声 \(x_t\) & \texttt{{[}3,81,480,832{]}} \\
+Patchify & 空间 \texttt{4×4} 重排，\textbf{3\(\rightarrow\)48} &
+\texttt{{[}48,81,120,208{]}} \\
+入口 & 逐位置 Linear，\textbf{48\(\rightarrow\)256} &
+\texttt{{[}256,81,120,208{]}} \\
+去噪主干 & Diffusion NA Block ×8，注入 context 和去噪时间步条件 &
+\texttt{{[}256,81,120,208{]}} \\
+出口 & RMSNorm \(\rightarrow\) Linear，\textbf{256\(\rightarrow\)48} &
+\texttt{{[}48,81,120,208{]}} \\
+Unpatchify & 将通道重排成 \texttt{4×4} RGB
+像素块，\textbf{48\(\rightarrow\)3} & \texttt{{[}3,81,480,832{]}} \\
+\end{longtable}
+}
+
+\endgroup
+
+最后输出重建视频 \(x_0\)。这里的 \textbf{8 个 Block
+是网络深度}；``去噪时间步''表示噪声等级，与视频的 81
+个时间位置是不同概念。
+
+\Needspace{8\baselineskip}
+
+\subsection{4.4 NA Attention：局部时空注意力}\label{ltx25-na}
+
+\textbf{NA（Neighborhood
+Attention）就是邻域注意力。}对于特征图上的每个位置
+\texttt{(t,h,w)}，只取附近一个三维窗口中的 K、V，与当前位置的 Q 计算
+Attention。窗口随查询位置滑动，相邻窗口重叠。
+
+例如 \textbf{\texttt{3×7×7}}
+窗口，在非边界处覆盖\textbf{前一个、当前、后一个时间位置}，每个时间位置取
+\textbf{7×7} 个空间格点。因此，每个查询、每个注意力头关注
+\textbf{\(3\times7\times7=147\)} 个位置，包括自身。
+
+\begingroup\NotesTableStyle\fontsize{10.5pt}{14pt}\selectfont\renewcommand{\arraystretch}{1.08}\setlength{\extrarowheight}{3pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1500}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1300}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.2500}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 10\tabcolsep) * \real{0.1700}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+阶段
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+特征通道
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Attention 头数
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+每头维度
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+窗口：时间 × 高 × 宽
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+每头关注的位置数
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+第一级 & 2048 & 32 & 64 & \texttt{3×7×7} & 147 \\
+第二级 & 1024 & 16 & 64 & \texttt{3×7×7} & 147 \\
+第三级 & 512 & 8 & 64 & \texttt{3×5×5} & 75 \\
+第四级 & 512 & 8 & 64 & \texttt{3×5×5} & 75 \\
+第五级：像素去噪 & 256 & 4 & 64 & \texttt{11×11×11} & 1331 \\
+\end{longtable}
+}
+
+\endgroup
+
+所有阶段的每头维度都是 \textbf{64}，头数为
+\textbf{\(C/64\)}。窗口大小按\textbf{所在层的特征格点}计算；NA 本身保持
+\texttt{{[}C,T,H,W{]}}，上采样由另外的模块完成。
+
+普通 NA Block 依次执行：
+
+\begin{verbatim}
+RMSNorm -> 三维 NA Attention -> 加残差
+RMSNorm -> SwiGLU MLP        -> 加残差
+\end{verbatim}
+
+Q、K 使用每头 RMSNorm 和三维 RoPE；MLP 隐藏维度为 \textbf{4C}。第五级的
+Diffusion NA Block 额外注入 context，并通过去噪时间步调制特征。
+
+这些 Attention
+都是\textbf{非因果的}，允许关注后续时间位置。到达边界时，窗口向有效区域内平移以保持大小，例如时间窗口为
+3 时，首位置关注 \texttt{0、1、2}。
+
+\clearpage
+
+\subsection{4.5 上下采样与时间边界}\label{ltx25-sampling}
+
+\begingroup\NotesTableStyle\fontsize{10.5pt}{14pt}\selectfont\renewcommand{\arraystretch}{1.08}\setlength{\extrarowheight}{3pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+操作
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+具体实现
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+形状变化
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{空间 Patchify} & 将每帧 \texttt{4×4} 像素块重排到通道维 &
+\(H,W\) 各除以 4；\(C\) 乘以 16；\(T\) 不变 \\
+\textbf{空间下采样} & 因果卷积 \(\rightarrow\)
+空间重排到通道；加重排、分组平均得到的 shortcut & \(H,W\) 各减半；\(T\)
+不变 \\
+\textbf{时间下采样} & 复制首帧 1 次 \(\rightarrow\)
+因果卷积与时间重排；加 shortcut & \(T\rightarrow(T+1)/2\)；\(H,W\)
+不变 \\
+\textbf{时空下采样} & 复制首帧 1 次 \(\rightarrow\) 因果卷积与
+\texttt{2×2×2} 联合重排；加 shortcut & \(T\rightarrow(T+1)/2\)；\(H,W\)
+各减半 \\
+\textbf{CNN 上采样} & 卷积生成所需通道 \(\rightarrow\)
+通道重排到指定时空维度 & 指定轴放大 2 倍；时间放大后删除最前面 1 帧 \\
+\textbf{NA Decoder 上采样} & Linear 生成所需通道 \(\rightarrow\)
+通道重排到指定时空维度 & 指定轴放大 2 倍；时间放大后删除最前面 1 帧 \\
+\textbf{空间 Unpatchify} & 将通道重排回每帧的 \texttt{4×4} 像素块 &
+\(H,W\) 各乘以 4；\(C\) 除以 16；\(T\) 不变 \\
+\end{longtable}
+}
+
+\endgroup
+
+下采样中的主分支先通过卷积调整通道，再将局部时空位置并入通道维；shortcut
+则对输入做同样的重排，并通过分组平均匹配输出通道。时空采样采用联合重排。
+
+\Needspace{8\baselineskip}
+
+\subsubsection{残差块、归一化与分块}\label{ux6b8bux5deeux5757ux5f52ux4e00ux5316ux4e0eux5206ux5757}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{CNN 残差块：}主分支主要执行两组``PixelNorm \(\rightarrow\)
+  SiLU \(\rightarrow\) \texttt{3×3×3} 卷积''，再加 shortcut，保持
+  \(T,H,W\)。
+\item
+  \textbf{PixelNorm：}在每个时空位置上，沿通道维做 RMS 归一化。
+\item
+  \textbf{时间边界：}Encoder
+  的因果卷积通过复制首帧完成左侧时间填充；含时间下采样的重排模块还会额外复制首帧
+  1 次。Decoder 则在时间展开后删除前导帧，使整体长度满足
+  \textbf{\(T_{\mathrm{out}}=8(T_z-1)+1\)}。
+\item
+  \textbf{分块执行：}LTX 支持带重叠区域的 tiling。这里的
+  \textbf{\(81=1+10\times8\)}
+  表示时间压缩关系；实际解码需要保留跨时间上下文，不能将 11 个 latent
+  时间位置分别独立解码后直接拼接。
+\end{itemize}
+
+\NotesFluxLayout
+
+\section{5. FLUX 3 Video VAE}\label{flux3}
+
+接着来看 FLUX 3 Action 的视频 VAE。它采用\textbf{因果 NA Transformer
+Encoder + 非因果 NA Transformer Decoder}，时间压缩倍率为
+\textbf{4}，空间高宽各压缩 \textbf{32} 倍，latent 通道数为 \textbf{96}。
+
+同样以 \textbf{81 帧、480×832} 的 RGB 视频为例，形状统一写作
+\texttt{{[}C,T,H,W{]}}，省略 \texttt{B=1}：
+
+\textbf{整段视频：}\texttt{{[}3,81,480,832{]}} \(\rightarrow\)
+\textbf{latent：}\texttt{{[}96,21,15,26{]}} \(\rightarrow\)
+\textbf{重建视频：}\texttt{{[}3,81,480,832{]}}。
+
+\[
+T_z=1+\frac{81-1}{4}=21,\qquad H_z=\frac{480}{32}=15,\qquad W_z=\frac{832}{32}=26.
+\]
+
+\Needspace{6\baselineskip}
+
+\subsection{5.1 Block 与 Attention}\label{flux3-attention}
+
+FLUX 3 的 VAE 也使用了 Neighborhood Attention，统一使用
+\textbf{\texttt{5×5×5}} 窗口，还加了 QK Norm 与三维
+RoPE；\textbf{Encoder 使用时间因果 Attention，Decoder 使用非因果
+Attention}。
+
+\begingroup\NotesTableStyle\fontsize{10.5pt}{14pt}\selectfont\renewcommand{\arraystretch}{1.08}\setlength{\extrarowheight}{3pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.3500}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+特征通道
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Attention 头数
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+每头维度
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+窗口：时间 × 高 × 宽
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+256 & 4 & 64 & \texttt{5×5×5} \\
+512 & 8 & 64 & \texttt{5×5×5} \\
+1024 & 16 & 64 & \texttt{5×5×5} \\
+2048 & 32 & 64 & \texttt{5×5×5} \\
+\end{longtable}
+}
+
+\endgroup
+
+单层 NA 中，Encoder 在时间上只关注\textbf{当前位置及最多前 4
+个位置}；Decoder 在非边界处关注\textbf{前 2 个、当前、后 2
+个位置}，边界处将窗口向序列内部平移。单帧输入使用 \textbf{\texttt{5×5}
+二维 NA}。
+
+\Needspace{6\baselineskip}
+
+\subsection{5.2 实际分块与上下文}\label{flux3-chunking}
+
+\textbf{编码分块：}按 \textbf{45 帧一块、每次前进 44 帧}执行，相邻块重叠
+1 帧，各块独立进入 Encoder。对于经典的 81 帧，会先复制末帧，将
+\textbf{81 帧补到 89 帧}：
+
+\begin{verbatim}
+第 1 块：第 1～45 帧
+第 2 块：第 45～89 帧
+\end{verbatim}
+
+每块编码得到 \textbf{12 个 latent
+时间位置}。保留首块全部输出，后续块丢弃首个 latent
+时间位置，再拼接并按原视频长度裁剪：
+
+\[
+12+(12-1)=23
+\quad\longrightarrow\quad
+\text{保留前 }21\text{ 个时间位置}.
+\]
+
+\Needspace{6\baselineskip}
+
+\subsection{5.3 Encoder：跟踪一个 45 帧视频块}\label{flux3-encoder}
+
+入口按 \textbf{\texttt{1×4×4}} 划分像素块并投影到 256 通道，实现为
+kernel 和 stride 均为 \texttt{1×4×4} 的
+Conv3d。随后进行三次空间合并，再在低空间分辨率上完成两次时间合并。
+
+\begingroup\NotesTableStyle\fontsize{10.5pt}{14pt}\selectfont\renewcommand{\arraystretch}{1.08}\setlength{\extrarowheight}{3pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.1300}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5900}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2800}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+顺序
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+模块与操作
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+输出形状
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+输入 & 当前视频块 & \texttt{{[}3,45,480,832{]}} \\
+入口 & \texttt{1×4×4\ Conv3d}，步长
+\texttt{(1,4,4)}，\textbf{3\(\rightarrow\)256} &
+\texttt{{[}256,45,120,208{]}} \\
+第一级 & NA Block ×1，256 通道 \(\rightarrow\)
+\textbf{空间合并，256\(\rightarrow\)512} &
+\texttt{{[}512,45,60,104{]}} \\
+第二级 & NA Block ×4，512 通道 \(\rightarrow\)
+\textbf{空间合并，512\(\rightarrow\)1024} &
+\texttt{{[}1024,45,30,52{]}} \\
+第三级主干 & NA Block ×8，1024 通道 \(\rightarrow\)
+\textbf{空间合并，1024\(\rightarrow\)2048} &
+\texttt{{[}2048,45,15,26{]}} \\
+第一次时间压缩 & 附加 NA Block ×1 \(\rightarrow\)
+\textbf{时间合并，45\(\rightarrow\)23} & \texttt{{[}2048,23,15,26{]}} \\
+第四级主干 & NA Block ×8，2048 通道 & \texttt{{[}2048,23,15,26{]}} \\
+第二次时间压缩 & 附加 NA Block ×1 \(\rightarrow\)
+\textbf{时间合并，23\(\rightarrow\)12} & \texttt{{[}2048,12,15,26{]}} \\
+出口 & 逐位置 Linear，\textbf{2048\(\rightarrow\)192} &
+\texttt{{[}192,12,15,26{]}} \\
+\end{longtable}
+}
+
+\endgroup
+
+空间压缩由入口的 4 倍和三次 2 倍空间合并组成：
+
+\[
+4\times2\times2\times2=32.
+\]
+
+时间长度则依次为：
+
+\[
+45\rightarrow23\rightarrow12.
+\]
+
+出口沿通道拆成两组，各为 \texttt{{[}96,12,15,26{]}}，只取前一组作为
+\textbf{\(\mu\)}。随后对 \(\mu\)
+使用模型保存的逐通道均值和标准差归一化。
+
+\Needspace{6\baselineskip}
+
+\subsection{5.4 Decoder：逐级恢复视频}\label{flux3-decoder}
+
+先撤销 latent 的逐通道归一化，再通过 Linear 投影、NA Block
+和时空展开，恢复 RGB 视频。形状统一为 \texttt{{[}C,T,H,W{]}}，省略 batch
+维。
+
+\begingroup\NotesTableStyle\fontsize{10.5pt}{14pt}\selectfont\renewcommand{\arraystretch}{1.08}\setlength{\extrarowheight}{3pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.1300}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5900}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2800}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+顺序
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+模块与操作
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+输出形状
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+输入 & 撤销归一化后的 latent & \texttt{{[}96,21,15,26{]}} \\
+入口 & 逐位置 Linear，\textbf{96\(\rightarrow\)2048} &
+\texttt{{[}2048,21,15,26{]}} \\
+第一级时间展开 & NA Block ×8 \(\rightarrow\)
+\textbf{时间展开，21\(\rightarrow\)41} \(\rightarrow\) NA Block ×1 &
+\texttt{{[}2048,41,15,26{]}} \\
+第一级空间展开 & \textbf{空间展开，2048\(\rightarrow\)1024} &
+\texttt{{[}1024,41,30,52{]}} \\
+第二级时间展开 & NA Block ×8 \(\rightarrow\)
+\textbf{时间展开，41\(\rightarrow\)81} \(\rightarrow\) NA Block ×1 &
+\texttt{{[}1024,81,30,52{]}} \\
+第二级空间展开 & \textbf{空间展开，1024\(\rightarrow\)512} &
+\texttt{{[}512,81,60,104{]}} \\
+第三级 & NA Block ×4 \(\rightarrow\)
+\textbf{空间展开，512\(\rightarrow\)256} &
+\texttt{{[}256,81,120,208{]}} \\
+第四级 & NA Block ×1，保持 256 通道 & \texttt{{[}256,81,120,208{]}} \\
+出口 & 逐位置 Linear，\textbf{256\(\rightarrow\)48} &
+\texttt{{[}48,81,120,208{]}} \\
+Unpatchify & 将 \textbf{48=3×4×4} 个通道重排为 RGB 像素块 &
+\texttt{{[}3,81,480,832{]}} \\
+\end{longtable}
+}
+
+\endgroup
+
+每次时间展开满足 \textbf{\(T\rightarrow2T-1\)}，因此时间长度为：
+
+\[
+21\rightarrow41\rightarrow81.
+\]
+
+\clearpage
+
+\subsection{5.5 上下采样与首帧对齐}\label{flux3-sampling}
+
+\begingroup\NotesTableStyle\fontsize{10.5pt}{14pt}\selectfont\renewcommand{\arraystretch}{1.08}\setlength{\extrarowheight}{3pt}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.5000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+操作
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+具体实现
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+形状变化
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{入口 Patch Embedding} & \texttt{1×4×4\ Conv3d}，步长
+\texttt{1×4×4}，\textbf{3\(\rightarrow\)256} & \(H,W\) 各除以 4；\(T\)
+不变 \\
+\textbf{空间合并} & 拼接 \texttt{2×2} 相邻位置：\texttt{C→4C}
+\(\rightarrow\) LayerNorm \(\rightarrow\) Linear
+\textbf{4C\(\rightarrow\)2C} & \(H,W\) 各减半；\(C\) 翻倍 \\
+\textbf{时间合并} & 奇数长度时在开头复制首位置 \(\rightarrow\)
+两位置拼接 \(\rightarrow\) LayerNorm \(\rightarrow\) Linear
+\textbf{2C\(\rightarrow\)C} \(\rightarrow\) 加两位置的均值 shortcut &
+\(T\rightarrow\lceil T/2\rceil\)；\(C,H,W\) 不变 \\
+\textbf{空间展开} & LayerNorm \(\rightarrow\) Linear
+\textbf{C\(\rightarrow\)4C\_out} \(\rightarrow\) 重排成 \texttt{2×2}
+空间位置，其中 \texttt{C\_out=C/2} & \(H,W\) 各翻倍；\(C\) 减半 \\
+\textbf{时间展开} & LayerNorm \(\rightarrow\) Linear
+\textbf{C\(\rightarrow\)2C} \(\rightarrow\) 加输入在通道维复制两份的
+shortcut \(\rightarrow\) 重排到时间维 \(\rightarrow\) 删除首位置 &
+\(T\rightarrow2T-1\)；\(C,H,W\) 不变 \\
+\textbf{空间 Unpatchify} & 将每个位置的 48 个通道重排为 \texttt{3×4×4}
+像素块 & \(H,W\) 各乘以 4；输出 3 通道 \\
+\end{longtable}
+}
+
+\endgroup
+
+\textbf{执行顺序：}
+
+\begin{itemize}
+\tightlist
+\item
+  Encoder 第三级：空间合并 \(\rightarrow\) 附加 NA Block \(\rightarrow\)
+  时间合并；第四级在主干后执行附加 NA Block \(\rightarrow\) 时间合并。
+\item
+  Decoder 前两级：时间展开 \(\rightarrow\) 附加 NA Block \(\rightarrow\)
+  空间展开。
+\end{itemize}
+
+\textbf{首帧对齐：}编码时通过复制首位置补齐奇数长度，解码时通过删除展开后的首位置恢复对齐。单帧也经过这些模块，但长度仍为
+1：
+
+\begin{verbatim}
+Encoder：1 → 复制成 2 → 合并成 1
+Decoder：1 → 展开成 2 → 删除首位置后剩 1
+\end{verbatim}
+
+两次时间展开后，输出长度为：
+
+\[
+T_{\mathrm{out}}=2(2T_z-1)-1=4(T_z-1)+1.
+\]
+
+\end{document}
