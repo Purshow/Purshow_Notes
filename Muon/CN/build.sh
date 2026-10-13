@@ -11,7 +11,7 @@ for tool in pandoc xelatex; do
   fi
 done
 
-output_name='Muon_推导笔记'
+output_name='Muon_CN'
 build_dir="$(mktemp -d "${TMPDIR:-/tmp}/muon-cn.XXXXXX")"
 trap 'rm -rf -- "$build_dir"' EXIT
 
