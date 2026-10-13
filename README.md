@@ -6,8 +6,9 @@ Personal research notes.
 
 - `Attention/CN`, `Attention/EN`: Attention Architectures and Mechanisms
 - `Beyond_Residual/CN`, `Beyond_Residual/EN`: Beyond Residual Connection
-- `Encoder-Free`: Why Removing the Encoder Is Better from an Infrastructure Perspective
+- `Encoder-Free/CN`, `Encoder-Free/EN`: Why Removing the Encoder Is Better from an Infrastructure Perspective
 - `MoE/CN`, `MoE/EN`: Mixture of Experts
+- `Muon/CN`, `Muon/EN`: From Norms to Optimizers: SGD and Muon
 - `OPD/CN`, `OPD/EN`: On-Policy Distillation
 - `Ngram_Embedding/CN`, `Ngram_Embedding/EN`: Sparse Vocab Embeddings: Over Encoding, PLE, and Engram
 - `Video_VAE/CN`, `Video_VAE/EN`: VAEs for Video Generation Models
@@ -21,6 +22,8 @@ bash Beyond_Residual/build.sh
 bash YOCO/build.sh
 bash Ngram_Embedding/build.sh
 bash Video_VAE/build.sh
+bash Muon/CN/build.sh
+bash Muon/EN/build.sh
 (cd Attention/CN && xelatex -interaction=nonstopmode -halt-on-error Attention.tex && xelatex -interaction=nonstopmode -halt-on-error Attention.tex)
 (cd Attention/EN && xelatex -interaction=nonstopmode -halt-on-error Attention_EN.tex && xelatex -interaction=nonstopmode -halt-on-error Attention_EN.tex)
 (cd MoE/CN && xelatex -shell-escape -interaction=nonstopmode -halt-on-error MoE_CN.tex)

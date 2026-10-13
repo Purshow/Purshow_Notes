@@ -1,0 +1,80 @@
+% English Muon notes; typography follows the neighboring research notes.
+\usepackage{fontspec}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{needspace}
+
+\setmainfont[
+  Path=/usr/local/texlive/2026/texmf-dist/fonts/opentype/public/tex-gyre/,
+  UprightFont=texgyrepagella-regular.otf,
+  BoldFont=texgyrepagella-bold.otf,
+  ItalicFont=texgyrepagella-italic.otf,
+  BoldItalicFont=texgyrepagella-bolditalic.otf
+]{texgyrepagella-regular.otf}
+\setsansfont[
+  Path=/usr/local/texlive/2026/texmf-dist/fonts/opentype/public/tex-gyre/,
+  UprightFont=texgyreheros-regular.otf,
+  BoldFont=texgyreheros-bold.otf,
+  ItalicFont=texgyreheros-italic.otf,
+  BoldItalicFont=texgyreheros-bolditalic.otf
+]{texgyreheros-regular.otf}
+
+\definecolor{notesblue}{HTML}{174A7E}
+\definecolor{notesgray}{HTML}{5D6773}
+\AtBeginDocument{\hypersetup{
+  colorlinks=true,
+  linkcolor=notesblue,
+  urlcolor=notesblue,
+  pdftitle={From Norms to Optimizers: SGD and Muon}
+}}
+
+\titleformat{\section}
+  {\LARGE\bfseries\sffamily\color{notesblue}}{}{0pt}{}
+\titleformat{\subsection}
+  {\large\bfseries\sffamily\color{notesblue}}{}{0pt}{}
+\titleformat{\subsubsection}
+  {\normalsize\bfseries\sffamily\color{notesgray}}{}{0pt}{}
+\titlespacing*{\section}{0pt}{0pt}{1.4ex}
+\titlespacing*{\subsection}{0pt}{1.8ex}{0.8ex}
+\titlespacing*{\subsubsection}{0pt}{1.6ex}{0.6ex}
+\setcounter{secnumdepth}{0}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.45em}
+\linespread{1.06}
+\setlist{itemsep=0.3em,topsep=0.4em,leftmargin=1.8em}
+\emergencystretch=3em
+\clubpenalty=10000
+\widowpenalty=10000
+\displaywidowpenalty=10000
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\sffamily\color{notesgray} Muon}
+\fancyhead[R]{\small\sffamily\color{notesgray} Purshow's Notes}
+\fancyfoot[C]{\small\sffamily\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+
+\newcommand{\ComparisonTableStart}{%
+  \clearpage
+  \begingroup
+  % Use a landscape sheet so fancyhdr follows the table's orientation.
+  \newgeometry{layoutwidth=297mm,layoutheight=210mm,margin=20mm,headheight=15pt}
+  \setlength{\paperwidth}{297mm}
+  \setlength{\paperheight}{210mm}
+  \special{papersize=297mm,210mm}
+  \setlength{\headwidth}{\textwidth}
+  \fontsize{8.5pt}{10.5pt}\selectfont
+  \setlength{\tabcolsep}{4pt}
+  \renewcommand{\arraystretch}{1.12}
+  \setlength{\extrarowheight}{4pt}
+  \setlength{\parskip}{0pt}
+  \setlength{\LTpre}{0pt}
+  \setlength{\LTpost}{0pt}
+}
+\newcommand{\ComparisonTableEnd}{%
+  \clearpage
+  \endgroup
+  \restoregeometry
+  \special{papersize=210mm,297mm}
+  \setlength{\headwidth}{\textwidth}
+}

@@ -1,0 +1,347 @@
+# From Norms to Optimizers: SGD and Muon
+
+## 1. A Unified View: Reducing the Loss Within an Update Budget
+
+Let the current parameter matrix be $W\in\mathbb R^{m\times n}$ and the update be a matrix $\Delta W$ of the same shape. The objective is to minimize $\mathcal L(W+\Delta W)$. Without a constraint on $\Delta W$, this amounts to finding the optimal parameter matrix in a single step, which is usually difficult. Instead, we reduce the loss gradually in the neighborhood of the current parameters: at each step, we first set an update budget $\varepsilon>0$, then choose an update within that budget:
+
+$$
+\min_{\|\Delta W\|\leq\varepsilon}\mathcal L(W+\Delta W).
+\tag{1}
+$$
+
+The norm here measures the magnitude of the update; we leave its specific choice open for now. When the budget is sufficiently small, a first-order expansion of the loss around the current parameters gives:
+
+$$
+\mathcal L(W+\Delta W)\approx\mathcal L(W)+\langle G,\Delta W\rangle,
+\qquad G=\nabla_W\mathcal L(W).
+\tag{2}
+$$
+
+Here, $\langle G,\Delta W\rangle=\operatorname{Tr}(G^\top\Delta W)=\sum_{i,j}G_{ij}(\Delta W)_{ij}$. Dropping the constant $\mathcal L(W)$, Equation (1) is approximately:
+
+$$
+\min_{\|\Delta W\|\leq\varepsilon}\langle G,\Delta W\rangle.
+\tag{3}
+$$
+
+To express the direction and magnitude of the update separately, write a nonzero update as:
+
+$$
+\Delta W
+=\underbrace{\dfrac{\Delta W}{\|\Delta W\|}}_{\text{direction }D}
+\times\underbrace{\vphantom{\dfrac{\Delta W}{\|\Delta W\|}}\|\Delta W\|}_{\text{magnitude }\rho}
+=\rho D.
+\tag{4}
+$$
+
+Here, $\|D\|=1$, and $\rho>0$ is a real scalar representing the update magnitude, with the budget constraint $\rho\leq\varepsilon$. The objective is now $\rho\langle G,D\rangle$. When $G\ne0$, the inner product along an optimal direction is negative, so using the full budget along that direction yields the largest decrease in the linear objective. We therefore only need to find an optimal unit direction and then multiply it by the budget [1, 2]:
+
+$$
+D^*\in\arg\min_{\|D\|=1}\langle G,D\rangle,
+\qquad
+\boxed{\Delta W^*=\varepsilon D^*.}
+\tag{5}
+$$
+
+The derivations below assume a nonzero gradient; when the gradient is zero, we may choose a zero update for the local problem.
+
+## 2. The Frobenius Norm: From Normalized Updates to SGD
+
+The Frobenius norm $\|D\|_{\mathrm F}=(\sum_{i,j}D_{ij}^2)^{1/2}$ equals the $\ell_2$ norm of the flattened matrix. With the Frobenius norm, Equation (5) minimizes $\langle G,D\rangle$ subject to $\|D\|_{\mathrm F}=1$. By the Cauchy-Schwarz inequality for the matrix inner product:
+
+$$
+|\langle G,D\rangle|
+\leq\|G\|_{\mathrm F}\|D\|_{\mathrm F}
+=\|G\|_{\mathrm F}.
+\tag{6}
+$$
+
+Thus, the inner product is bounded below by $-\|G\|_{\mathrm F}$, attained at $D=-G/\|G\|_{\mathrm F}$. Multiplying by the budget gives:
+
+$$
+D^*=-\frac{G}{\|G\|_{\mathrm F}},
+\qquad
+\boxed{\Delta W^*=-\varepsilon\frac{G}{\|G\|_{\mathrm F}}.}
+\tag{7}
+$$
+
+A fixed budget $\varepsilon$ yields normalized gradient descent. Standard SGD corresponds to a budget of $\varepsilon_t=\eta_t\|G_t\|_{\mathrm F}$: the learning rate $\eta_t$ multiplied by the Frobenius norm of the current mini-batch gradient matrix $G_t$. Substituting this into Equation (7) cancels the gradient norm, giving:
+
+$$
+\varepsilon_t=\eta_t\|G_t\|_{\mathrm F}
+\quad\Longrightarrow\quad
+\boxed{W_{t+1}=W_t-\eta_t G_t.}
+\tag{8}
+$$
+
+This update can be computed elementwise: $(\Delta W_t)_{ij}=-\eta_t G_{t,ij}$. It is also the stochastic version of proximal gradient when there is no nonsmooth term [3].
+
+## 3. A Fixed Spectral-Norm Budget Gives Muon
+
+Another common matrix norm is the spectral norm, which measures the largest factor by which a matrix can amplify a vector's length (its $\ell_2$ norm). It equals the matrix's largest singular value:
+
+$$
+\|\Delta W\|_2=\max_{\|x\|_2=1}\|\Delta W x\|_2=\sigma_{\max}(\Delta W).
+\tag{9}
+$$
+
+Choosing the spectral norm and setting the budget to $\varepsilon=\eta$, Equation (3) minimizes $\langle G,\Delta W\rangle$ subject to $\|\Delta W\|_2\leq\eta$. To find an optimal update, first take the compact SVD of the gradient matrix $G$, retaining only the nonzero singular values:
+
+$$
+G=U_r\Sigma_rV_r^\top
+=\sum_{i=1}^r\sigma_i u_iv_i^\top,\qquad \sigma_i>0.
+\tag{10}
+$$
+
+Since $u_i,v_i$ are both unit vectors, $u_i^\top\Delta W v_i\geq-\|\Delta W\|_2\geq-\eta$, so:
+
+$$
+\langle G,\Delta W\rangle
+=\operatorname{Tr}(G^\top\Delta W)
+=\sum_{i=1}^r\sigma_i u_i^\top\Delta W v_i
+\geq-\eta\sum_{i=1}^r\sigma_i.
+\tag{11}
+$$
+
+With $\Delta W=-\eta U_rV_r^\top$, we have $\|\Delta W\|_2=\eta$ and $u_i^\top\Delta W v_i=-\eta$ for each singular direction, exactly attaining the lower bound. Thus, one optimal update under a fixed spectral-norm budget is:
+
+$$
+\boxed{\Delta W^*=-\eta U_rV_r^\top.}
+\tag{12}
+$$
+
+This directly gives the core Muon update [4]. The original singular values $\sigma_i$ determine the maximum first-order decrease in the loss, namely $\eta\sum_i\sigma_i$; the update magnitude along each nonzero singular direction is the same budget $\eta$. In comparison, standard SGD has magnitude $\eta\sigma_i$ along these directions. In practice, Muon approximately orthogonalizes the momentum matrix and may also apply dimension-dependent scaling [5].
+
+## 4. The RMS-to-RMS Operator Norm Gives the $\mu$P Version of Muon
+
+For a linear layer $y=Wx$, $n$ is the input dimension and $m$ is the output dimension. To compare the typical size of activation components across different widths, we use the root mean square (RMS):
+
+$$
+\|v\|_{\mathrm{RMS}}
+=\sqrt{\frac{1}{d}\sum_{i=1}^d v_i^2}
+=\frac{\|v\|_2}{\sqrt d},\qquad v\in\mathbb R^d.
+\tag{13}
+$$
+
+Measuring both inputs and outputs by RMS gives the RMS-to-RMS operator norm [4]:
+
+$$
+\begin{aligned}
+\|\Delta W\|_{\mathrm{RMS}\to\mathrm{RMS}}
+&:=\max_{x\ne0}\frac{\|\Delta W x\|_{\mathrm{RMS}}}{\|x\|_{\mathrm{RMS}}}\\
+&=\max_{x\ne0}\frac{\|\Delta W x\|_2/\sqrt m}{\|x\|_2/\sqrt n}
+=\sqrt{\frac{n}{m}}\,\|\Delta W\|_2.
+\end{aligned}
+\tag{14}
+$$
+
+A fixed budget $\|\Delta W\|_{\mathrm{RMS}\to\mathrm{RMS}}\leq\eta$ is equivalent to $\|\Delta W\|_2\leq\eta\sqrt{m/n}$. Replacing the spectral-norm budget in Equation (12) with $\eta\sqrt{m/n}$ therefore yields the $\mu$P version of the Muon update [4]:
+
+$$
+\boxed{\Delta W_{\mu\mathrm P}
+=-\eta\sqrt{\frac{m}{n}}\,U_rV_r^\top.}
+\tag{15}
+$$
+
+For the details of $\mu$P, I very, very strongly recommend these three articles [6, 12, 13] (Su and Greg Yang really are authorities on this).
+
+## 5. From Muon to Moonlight
+
+Following the notation above, $\Delta W_t$ denotes the gradient-driven parameter increment, **including the learning rate and the minus sign for the descent direction**; weight decay is written separately:
+
+$$
+\boxed{W_{t+1}=(1-\eta_t\lambda_{\mathrm{wd}})W_t+\Delta W_t.}
+\tag{17}
+$$
+
+Here, $\lambda_{\mathrm{wd}}$ is the weight decay coefficient, abbreviated as WD below. Let $H_t$ be the momentum matrix passed to orthogonalization. Standard momentum and one common formulation of Nesterov momentum are:
+
+$$
+M_t=\mu M_{t-1}+G_t,\qquad
+H_t=\begin{cases}
+M_t,&\text{standard momentum},\\
+G_t+\mu M_t,&\text{Nesterov}.
+\end{cases}
+\tag{18}
+$$
+
+$$
+\Delta W_t=-\eta_t\begin{cases}
+\operatorname{NS}_5(H_t),&\text{original Muon baseline},\\
+0.2\sqrt{\max(m,n)}\,\operatorname{NS}_5(H_t),&\text{Moonlight}.
+\end{cases}
+\tag{19}
+$$
+
+Here, $\operatorname{NS}_5$ denotes five steps of Newton-Schulz approximate orthogonalization, which we will discuss in more detail later.
+
+**Moonlight, together with QK-Clip introduced in Kimi K2, can be summarized in three points:**
+
+1. **Add weight decay.** Apply decoupled weight decay as in Equation (17) to curb the continued growth of weight and activation magnitudes.
+2. **Align the update RMS with Adam.** Multiply by $0.2\sqrt{\max(m,n)}$ so that the RMS of the update before multiplication by the learning rate roughly matches Adam's typical magnitude of $0.2$ (as documented at https://kexue.fm/). This allows direct reuse of the **learning rate and weight decay rate** tuned for Adam, reducing the cost of another hyperparameter search [7, 8].
+3. **QK-Clip.** After each update, if the maximum attention logit of an attention head exceeds a threshold, scale down the Q/K weights proportionally to suppress attention logit explosion [9].
+
+The update RMS here differs from the earlier RMS-to-RMS operator norm, which measures the ratio of output perturbation to input magnitude. Here it means $\operatorname{RMS}(\Delta W/\eta)=\|\Delta W\|_{\mathrm F}/(\eta\sqrt{mn})$, measuring the overall size of the update's elements.
+
+## 6. Core Comparison Table
+
+Unless otherwise noted, the table below describes pretraining configurations. Updates follow the notation of Equation (19), and weight decay is computed as in Equation (17).
+
+Following Equation (19), $W\in\mathbb R^{m\times n}$ in the table denotes the matrix actually involved in a single update computation. With per-head processing, $W$ is the submatrix for one head, and $m,n$ are that submatrix's row and column counts. After computing updates for each head separately, they are assembled into an update for the full weight matrix in their original positions.
+
+$\operatorname{PE}_8$ denotes eight steps of Polar Express, and $\operatorname{SK}_{11}$ denotes 11 steps of Sinkhorn balancing with weak-row masking; $s$ is the update scaling factor for the current matrix. In Muown, $g$ is the row magnitude, $H_{R,t}$ is the momentum matrix for the direction variable, and $\widehat m_{g,t},\widehat v_{g,t}$ are Adam moment estimates of the magnitude gradient. The MiMo formula combines the base coefficient $0.2$ with the additional RL scaling of $0.5$, giving $0.1$. See Section 7 for the detailed computations and Equation (27) for K3's QK-Clip.
+
+| Model | Core Update | Main Changes Relative to Original Muon | Parameter Allocation and Settings |
+|:--|:--|:--|:--|
+| **Qwen3.8-Flash-Next** | $\Delta W_t=-0.2\eta_t\sqrt{\max(m,n)}\,\operatorname{PE}_8(H_t)$. | **Moonlight scaling + 8-step Polar Express + finer splitting.** QKV and GDN input projections are split by head; SwiGLU FC1 is split into gate/up, with scaling computed from the submatrix dimensions. | Nesterov, $\mu=0.95$. Embedding, LM head, router, and GR low-rank projections use AdamW; N-gram tables use Adam. |
+| **DeepSeek-V4.1-Flash** | $\begin{aligned}[t]&\text{Backbone matrices:}\\[-1pt]&\Delta W_t=-\eta_t s\,\operatorname{NS}(H_t),\\[1pt]&\text{Engram, embedding, LM head:}\\[-1pt]&\Delta W_t=-0.18\eta_t\sqrt n\,\operatorname{SK}_{11}(H_t).\end{aligned}$ | Adds **Head-wise Muon** on top of V4; **Engram tables, token embedding, and LM head switch to Sinkhorn updates that balance row and column scales**. | Muon: target RMS of 0.18, $\mu=0.95$, WD=0.1. Sinkhorn: **no WD**; Engram LR is additionally multiplied by 5. Norm/non-matrix parameters use AdamW. |
+| **DeepSeek-V4-Pro** | $\begin{aligned}[t]\Delta W_t={}&-0.18\eta_t\sqrt{\max(m,n)}\\&\quad\cdot\operatorname{HybridNS}_{8+2}(H_t).\end{aligned}$ | **Moonlight-style scaling and WD + 10-step hybrid NS**: the first 8 steps rapidly approximate the target, and the final 2 apply a correction; the RMS scaling coefficient is **0.18**. | Nesterov, $\mu=0.95$, WD=0.1. Embedding, LM head, RMSNorm, and mHC's static bias/gating factors use AdamW. |
+| **Kimi K3** | $\Delta W_t=-\eta_t s\,\operatorname{NS}(H_t)$. | **Per-Head Muon + QK-Clip**: Q/K/V are updated per head, followed by clipping of Q/K weights based on each head's maximum attention logit. | Matrix parameters use Muon, WD=0.1. **Note:** The original K3 description is rather brief; it is unclear whether it uses RMS alignment or similar adjustments. |
+| **MiMo-V2.6-Pro** | $\begin{aligned}[t]R_{t+1}&=R_t-0.1\eta_t\sqrt{\max(m,n)}\\&\quad\cdot\operatorname{NS}_{10}(H_{R,t}),\\[2pt]g_{t+1}&=g_t-\eta_t\frac{\widehat m_{g,t}}{\sqrt{\widehat v_{g,t}}+\epsilon},\\[2pt]\Delta W_{i,t}&=g_{i,t+1}\frac{R_{i,t+1}}{\|R_{i,t+1}\|_2}-W_{i,t}.\end{aligned}$ | **Muown: optimize row directions and row magnitudes separately.** Direction $R$ uses Muon, while row magnitude $g$ uses Adam, explicitly controlling row norms to mitigate drift in the spectral norm of the weights. | **Pretraining:** AdamW. **Mid-training:** hidden-layer matrices switch to Muown; embedding, LM head, and router retain AdamW. **RL:** LR=$3\times10^{-6}$, WD=0, no warmup, clip=1.0; Nesterov, $\mu=0.95$, NS=10, with an additional factor of 0.5 on the Muon update; Adam: $\beta_1=\beta_2=0.95$, $\epsilon=10^{-8}$; router frozen. |
+| **Inkling** | $W_{t+1}=(1-\eta_t\lambda_t)W_t+\Delta W_t$. | **Weight decay is coupled to the square of the learning rate in the schedule.** The actual fraction decayed at each step is adjusted with $\eta_t^2$. | **Pretraining:** large matrices use Muon; all other parameters use Adam. |
+| **MAI-Thinking-1** | $\Delta W_t=-\eta_t\dfrac{\widehat m_t}{\sqrt{\widehat v_t}+\delta}$, computed elementwise. | - | Pretraining (MAI-Base-1): $(\beta_1,\beta_2)=(0.95,0.925)$; WD is generally 0.1, with 0.01 for attention and 0.005 for embedding. RL: $\beta_1=\beta_2=0.95$, **WD=0**. |
+
+## 7. Detailed Formulas for the Key Changes
+
+### 7.1 Orthogonalization: NS and Its Improvements
+
+I will only give a rough outline of NS here. For the details, I very strongly recommend Su's blog (Su really is an authority on this, lol). Original Muon, DeepSeek-V4, and Qwen share the same computational pattern: first normalize the momentum matrix, then iterate a matrix polynomial. Below, $\delta$ denotes a numerical stability constant (set to 0 when unused), to distinguish it from the update budget $\varepsilon$ above:
+
+$$
+X_0=\frac{H_t}{\|H_t\|_{\mathrm F}+\delta}.
+\tag{20}
+$$
+
+$$
+\boxed{X_{k+1}=a_kX_k+b_k(X_kX_k^\top)X_k+c_k(X_kX_k^\top)^2X_k.}
+\tag{21}
+$$
+
+Original Muon / Moonlight uses five iterations with fixed coefficients:
+
+$$
+(a_k,b_k,c_k)=(3.4445,-4.7750,2.0315).
+\tag{22}
+$$
+
+DeepSeek-V4-Pro uses Equation (22) for the first eight steps, then switches to corrective coefficients for the last two steps to stabilize the singular values around 1:
+
+$$
+(a_k,b_k,c_k)=(2,-1.5,0.5).
+\tag{23}
+$$
+
+Qwen3.8-Flash-Next uses **the step-dependent coefficient schedule of 8-step Polar Express [10]**, with $\delta=10^{-14}$ in the Frobenius normalization.
+
+### 7.2 Splitting by Head
+
+Qwen's splitting covers QKV, GDN input projections, and SwiGLU's gate/up; GLM-5 applies it to MLA's Q/K/V up-projections, DeepSeek-V4.1 to Q/K, and K3 splits the Q/K/V momentum matrices.
+
+**K3 also retains post-update weight clipping.** The general form of K2's QK-Clip is as follows: when the maximum attention logit $S_{\max}^h$ of head $h$ exceeds the threshold $\tau$, scale down the Q/K weights:
+
+$$
+\begin{aligned}
+r_h&=\begin{cases}1,&S_{\max}^h\leq\tau,\\
+\tau/S_{\max}^h,&S_{\max}^h>\tau,\end{cases}\\
+W_q^h&\leftarrow r_h^\alpha W_q^h,\qquad
+W_k^h\leftarrow r_h^{1-\alpha}W_k^h.
+\end{aligned}
+\tag{27}
+$$
+
+Here, $\alpha$ allocates the scaling between the Q and K sides. MLA also requires distinguishing between shared and non-shared components.
+
+### 7.3 DeepSeek-V4.1: Balancing Row and Column Scales with Sinkhorn
+
+He really does love Sinkhorn...
+For Engram, embedding, or the LM head, let $W\in\mathbb R^{m\times n}$, where $m$ is the number of rows (the vocabulary size for embedding and the LM head) and $n$ is the hidden dimension. This parameter group uses the following Nesterov momentum formulation:
+
+$$
+M_t=0.95M_{t-1}+0.05G_t,\qquad
+H_t=0.95M_t+0.05G_t.
+\tag{28}
+$$
+
+First, zero out rows of $H_t$ whose norms are no greater than $10^{-3}$ times the average row norm, yielding $U^{(0)}$; then alternate between row and column normalization:
+
+$$
+U^{(k)}=\begin{cases}
+\operatorname{RowL2Norm}_{\delta}(U^{(k-1)}),&k\text{ is odd},\\
+\operatorname{ColL2Norm}_{\delta}(U^{(k-1)}),&k\text{ is even},
+\end{cases}
+\quad k=1,\ldots,11.
+\tag{29}
+$$
+
+At each step, divide by the corresponding row or column's $\ell_2$ norm plus $\delta=10^{-20}$. The final step is row normalization. Multiplying by $\sqrt n$ then converts a unit row $\ell_2$ norm into unit row RMS, after which $0.18$ aligns the update magnitude:
+
+$$
+\boxed{W_{t+1}=W_t-0.18\eta_t\sqrt n\,U^{(11)}.}
+\tag{30}
+$$
+
+This parameter group has no weight decay, and Engram's learning rate is additionally multiplied by 5. Sinkhorn balances update magnitudes through row and column scaling; it neither guarantees equal singular values nor performs Muon-style orthogonalization. Its goal is to approximately balance row and column RMS; rows that were zeroed out remain zero.
+
+### 7.4 MiMo: Muown Learns Weight Row Magnitudes Separately
+
+Muown [11] takes the view that Muon's lack of independent control over the magnitude of the weights themselves may cause their row norms to keep growing. It therefore represents each row of the weight matrix as the product of a row magnitude and a normalized direction:
+
+$$
+W_i=g_i\frac{R_i}{\|R_i\|_2}.
+\tag{31}
+$$
+
+Here, $g_i$ is a learnable row magnitude. Let $r_i=\|R_i\|_2$ and $d_i=R_i/r_i$. Given the weight gradient $G_i$, the chain rule separates the magnitude gradient $q_i$ from the direction-variable gradient $F_i$:
+
+$$
+q_i=\langle G_i,d_i\rangle,\qquad
+F_i=\frac{g_i}{r_i}(G_i-q_id_i).
+\tag{32}
+$$
+
+Use Adam to update $g$ and Muon to update $R$. Omitting the weight decay term, the updates can be written as:
+
+$$
+\begin{aligned}
+M_t^R&=\mu M_{t-1}^R+F_t,\\
+R^+&=R-\eta_ta_{m,n}\operatorname{NS}(F_t+\mu M_t^R),\\
+g^+&=g-\eta_t\frac{\widehat m_g}{\sqrt{\widehat v_g}+\epsilon}.
+\end{aligned}
+\tag{33}
+$$
+
+Here, $\widehat m_g,\widehat v_g$ are Adam moment estimates of $q$; $g$ is updated elementwise, and $a_{m,n}=0.2\sqrt{\max(m,n)}$. The actual weights are then reconstructed as:
+
+$$
+\boxed{W_i^+=g_i^+\frac{R_i^+}{\|R_i^+\|_2}.}
+\tag{34}
+$$
+
+
+**References**
+
+[1] Jianlin Su: [An Appreciation of the Muon Optimizer: The Fundamental Leap from Vectors to Matrices](https://kexue.fm/archives/10592).
+
+[2] Bernstein & Newhouse: [Old Optimizer, New Norm: An Anthology](https://arxiv.org/abs/2409.20325v2).
+
+[3] Parikh & Boyd: [Proximal Algorithms](https://web.stanford.edu/~boyd/papers/pdf/prox_algs.pdf).
+
+[4] Jeremy Bernstein: [Deriving Muon](https://jeremybernste.in/writing/deriving-muon).
+
+[5] Keller Jordan: [Muon: An optimizer for hidden layers in neural networks](https://kellerjordan.github.io/posts/muon/).
+
+[6] Yang, Simon & Bernstein: [A Spectral Condition for Feature Learning](https://papers.cool/arxiv/2310.17813).
+
+[7] Jianlin Su: [Muon, Continued: Why Did We Choose to Try Muon?](https://kexue.fm/archives/10739).
+
+[8] Jianlin Su: [Why Is Adam's Update RMS 0.2?](https://kexue.fm/archives/11267).
+
+[9] Jianlin Su: [QK-Clip: Taking Muon Further Along the Road to Scaling Up](https://kexue.fm/archives/11126).
+
+[10] Amsel, Persson, Musco & Gower: [The Polar Express: Optimal Matrix Sign Methods and Their Application to the Muon Algorithm](https://arxiv.org/abs/2505.16932).
+
+[11] Lion, Hübler, Li, Orvieto & He: [Muown: Row-Norm Control for Muon Optimization](https://arxiv.org/abs/2605.10797v1).
+
+[12] Jianlin Su: [Higher-Order MuP: Simpler Yet More Sophisticated Spectral-Condition Scaling](https://kexue.fm/archives/10795).
+
+[13] Jianlin Su: [Beyond MuP: 2. Linear Layers and Steepest Descent](https://kexue.fm/archives/11605).

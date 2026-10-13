@@ -19,7 +19,7 @@ function Header(header)
   if header_text:match("Overview of Attention Architectures and Parameters") then
     landscape_table_pending = true
     return {
-      pandoc.RawBlock("latex", "\\clearpage\\newgeometry{top=10mm,bottom=10mm,left=8mm,right=8mm,headheight=15pt}\\begin{landscape}\\thispagestyle{empty}\\noindent\\hfill{\\small\\sffamily\\color{attentiongray}Purshow’ Notes}\\par\\vspace{-0.6em}"),
+      pandoc.RawBlock("latex", "\\clearpage\\newgeometry{top=10mm,bottom=10mm,left=8mm,right=8mm,headheight=15pt}\\begin{landscape}\\thispagestyle{empty}\\noindent\\hfill{\\small\\sffamily\\color{attentiongray}Purshow's Notes}\\par\\vspace{-0.6em}"),
       header,
     }
   end
