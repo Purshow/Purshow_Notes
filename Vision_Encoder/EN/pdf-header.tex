@@ -1,0 +1,25 @@
+% Shared visual style with the Purshow Notes collection.
+\documentclass[11pt,fontset=none]{ctexart}
+\usepackage[a3paper,landscape,left=15mm,right=15mm,top=19mm,bottom=17mm,headheight=15pt,headsep=9pt,footskip=22pt]{geometry}
+\usepackage{fontspec,amsmath,amssymb,array,longtable,booktabs,fancyhdr,xcolor,xurl,hyperref,graphicx,enumitem,needspace}
+\setmainfont[Path=/usr/local/texlive/2026/texmf-dist/fonts/opentype/public/tex-gyre/,UprightFont=texgyrepagella-regular.otf,BoldFont=texgyrepagella-bold.otf,ItalicFont=texgyrepagella-italic.otf,BoldItalicFont=texgyrepagella-bolditalic.otf]{texgyrepagella-regular.otf}
+\setsansfont[Path=/usr/local/texlive/2026/texmf-dist/fonts/opentype/public/tex-gyre/,UprightFont=texgyreheros-regular.otf,BoldFont=texgyreheros-bold.otf,ItalicFont=texgyreheros-italic.otf,BoldItalicFont=texgyreheros-bolditalic.otf]{texgyreheros-regular.otf}
+\setmonofont[Path=/usr/local/texlive/2026/texmf-dist/fonts/opentype/SIL/jetbrainsmono-otf/,UprightFont=JetBrainsMono-Regular.otf,BoldFont=JetBrainsMono-Bold.otf,Scale=0.82]{JetBrainsMono-Regular.otf}
+\setCJKmainfont[Path=/System/Library/Fonts/Supplemental/,FontIndex=6,BoldFont=Songti.ttc,BoldFeatures={FontIndex=1}]{Songti.ttc}
+\setCJKsansfont[Path=/System/Library/Fonts/,FontIndex=1,BoldFont={STHeiti Medium.ttc},BoldFeatures={FontIndex=1}]{STHeiti Light.ttc}
+\setCJKmonofont[Path=/System/Library/Fonts/,FontIndex=1]{STHeiti Light.ttc}
+\definecolor{notesblue}{HTML}{174A7E}
+\definecolor{notesgray}{HTML}{5D6773}
+\definecolor{noteslink}{HTML}{1769AA}
+\hypersetup{colorlinks=true,urlcolor=noteslink,linkcolor=noteslink,pdftitle={Vision Encoder Architectures and Multimodal Training},pdfauthor={Purshow},pdfsubject={Visual modules, compression, position encoding, dynamic resolution, multimodal training, input infrastructure}}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{3pt}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\sffamily\color{notesgray}Vision Encoder / Architecture Notes}
+\fancyhead[R]{\small\sffamily\color{notesgray}Purshow's Notes}
+\fancyfoot[R]{\small\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+\setcounter{secnumdepth}{0}
+\raggedbottom
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}

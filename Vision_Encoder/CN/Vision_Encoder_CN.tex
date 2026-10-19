@@ -1,0 +1,204 @@
+\input{pdf-header.tex}
+\begin{document}
+{\sffamily\bfseries\color{notesblue}\fontsize{23}{28}\selectfont 视觉编码器架构与多模态训练对比\par}
+\vspace{1mm}{\color{notesblue}\rule{\linewidth}{0.8pt}}\par\vspace{1mm}
+{\small {\bfseries 压缩口径：}总倍率按 {\bfseries 时间 \(\times\) 高 \(\times\) 宽} 排列，计算模型入口像素/\allowbreak{}时间网格到输出视觉 token 网格的名义倍率，包含 patchify；\(N\) 默认指 patchify 后、末端合并前的有效 token 数。抽帧、resize 不计入网络压缩；边界 padding 按取整处理。静态图像复制时间维不算真实帧压缩；图像倍率中的时间 1 仅作占位。}\par\vspace{2pt}
+{\small {\bfseries 动态分辨率口径：}可变二维 patch 网格和有效 token 数，允许预算内 resize/\allowbreak{}pad。}\par\vspace{2pt}
+\begingroup
+\fontsize{9.5pt}{12pt}\selectfont
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.02}
+\setlength{\extrarowheight}{2pt}
+\setlength{\LTpre}{5pt}
+\setlength{\LTpost}{6pt}
+\setlength{\parskip}{0pt}
+\setlength{\emergencystretch}{2em}
+\begin{longtable}{@{}P{0.130\dimexpr\textwidth-40pt\relax}P{0.235\dimexpr\textwidth-40pt\relax}P{0.300\dimexpr\textwidth-40pt\relax}P{0.245\dimexpr\textwidth-40pt\relax}P{0.090\dimexpr\textwidth-40pt\relax}@{}}
+\toprule
+
+\textbf{模型} & \textbf{视觉模块架构} & \textbf{时空压缩、位置编码与动态分辨率} & \textbf{多模态训练 Recipe} & \textbf{视觉输入 infra 优化} \\
+\midrule\endfirsthead
+\toprule
+\textbf{模型} & \textbf{视觉模块架构} & \textbf{时空压缩、位置编码与动态分辨率} & \textbf{多模态训练 Recipe} & \textbf{视觉输入 infra 优化} \\
+\midrule\endhead
+\midrule
+\multicolumn{5}{r}{\footnotesize\color{notesgray}续下页}\endfoot
+\bottomrule\endlastfoot
+{\bfseries MAI-\allowbreak{}Base-\allowbreak{}2} & {\bfseries 最大最新最强的Encoder-\allowbreak{}Free!!!} & \textemdash{}\textemdash{} & \textemdash{}\textemdash{} & \textemdash{}\textemdash{} \\
+\addlinespace[6pt]
+{\bfseries Kimi K3} & {\bfseries MoonViT-\allowbreak{}V2，401M，27 层、宽度 1024。}\par\vspace{1pt}{\bfseries Attention：MHA，Q/\allowbreak{}K/\allowbreak{}V =\allowbreak{} 12/\allowbreak{}12/\allowbreak{}12 头，每头 128 维}；按\href{\detokenize{https://huggingface.co/moonshotai/Kimi-K3/blob/f831ab66814297da540d832a5235f8e904f29d06/modeling_kimi_k3.py#L603-L615}}{官方公开代码}，每个 chunk 内全部 \(T H W\) token 做非因果全局 attention（时空联合）。\par\vspace{1pt}FFN：普通两层 {\bfseries GELU-\allowbreak{}tanh MLP，1024\(\rightarrow\)4096\(\rightarrow\)1024}；编码器末端 RMSNorm。\par\vspace{1pt}Projector：合并后 {\bfseries 4096\(\rightarrow\)4096\(\rightarrow\)7168，GELU，末端 RMSNorm}。 & {\bfseries 总倍率：\(t\times 28\times 28\)；满 4 帧 chunk 为 \(4\times 28\times 28\)。}\par\vspace{1pt}{\bfseries Patch /\allowbreak{} 压缩：}Conv2d，\(1\times 14\times 14\)；27 层 ViT + 末端 RMSNorm 后，对同空间位置、同通道的 \(t\) 帧特征做 \texttt{mean(dim=\allowbreak{}0)}，再将空间 \(2\times 2\) 拼到通道维，{\bfseries \(N\rightarrow N/(4t)\)}。每 chunk \(1\leq t\leq 4\)；一次 forward 可打包多个 chunk，各自池化；独立图片按 \(t=1\) 处理。\par\vspace{1pt}{\bfseries 位置：}64\(\times\)64 可学习空间表双线性插值 + 固定时间编码；attention 内 2D RoPE，空间坐标跨帧重复。\par\vspace{1pt}{\bfseries 动态分辨率：是。} 可变 \(T,H,W\) 网格、变长 patch 打包，\texttt{cu\_\allowbreak{}seqlens} 隔离 chunk。最高 3584\(\times\)3584。 & {\bfseries MoonViT-\allowbreak{}V2 从零训练，从主模型训练开始即联合图文训练，采用自回归目标。}\par\vspace{1pt}视觉数据包括 caption、交错图文、OCR、感知、视频、视觉代码，以及 SVG、网页、游戏、CAD 等渲染数据。优化使用 per-\allowbreak{}head Muon， {\bfseries 1\% warmup、cosine 调度、weight decay 0.\allowbreak{}1}。\par\vspace{1pt}相关后训练为 {\bfseries SFT \(\rightarrow\) 含视觉任务的领域专家 RL \(\rightarrow\) 多教师 on-\allowbreak{}policy distillation}。 & 视觉 Context Parallelism 按图像 patch 分片、gather KV，并动态划分子组以平衡大图负载；将视觉编码器前向、反向安排进主训练流水线的空闲区间，减少视觉部分造成的等待。 \\
+\addlinespace[6pt]
+{\bfseries Qwen3.\allowbreak{}8-\allowbreak{}Flash-\allowbreak{}Next} & {\bfseries ViT，415.\allowbreak{}9M，27 层、宽度 1152。}\par\vspace{1pt}{\bfseries Attention：MHA，Q/\allowbreak{}K/\allowbreak{}V =\allowbreak{} 16/\allowbreak{}16/\allowbreak{}16 头，每头 72 维}；每个时间片内做非因果全局 attention。\par\vspace{1pt}FFN：普通两层 {\bfseries GELU-\allowbreak{}tanh MLP，1152\(\rightarrow\)4304\(\rightarrow\)1152}。\par\vspace{1pt}Projector：LayerNorm 后空间 \(2\times 2\) 拼接，{\bfseries 4608\(\rightarrow\)4608\(\rightarrow\)2560，GELU}。 & {\bfseries 总倍率：\(2\times 32\times 32\)；时间在 patchify 压缩 2 倍，之后不再压缩。}\par\vspace{1pt}{\bfseries Patch /\allowbreak{} 压缩：}Conv3d kernel=\allowbreak{}stride=\allowbreak{}\(2\times 16\times 16\)；末端 LayerNorm 后空间 \(2\times 2\) 拼接 + MLP，{\bfseries \(N\rightarrow N/4\)}，仅额外压缩空间，无末端时间池化。\par\vspace{1pt}{\bfseries 位置：}48\(\times\)48 绝对位置表双线性插值；视觉 attention 内 2D RoPE。\par\vspace{1pt}{\bfseries 动态分辨率：是。} 可变 \(T,H,W\) 网格、变长 patch 打包，\texttt{cu\_\allowbreak{}seqlens} 隔离 chunk。 & \textemdash{}\textemdash{} & \textemdash{}\textemdash{} \\
+\addlinespace[6pt]
+{\bfseries DeepSeek-\allowbreak{}V4.\allowbreak{}1-\allowbreak{}Flash} & {\bfseries DeepSeek-\allowbreak{}ViT，411.\allowbreak{}8M，32 层、宽度 1024。}\par\vspace{1pt}{\bfseries Attention：MHA，Q/\allowbreak{}K/\allowbreak{}V =\allowbreak{} 16/\allowbreak{}16/\allowbreak{}16 头，每头 64 维}；每张图像内做非因果全局 attention。\par\vspace{1pt}FFN：{\bfseries SwiGLU，1024\(\rightarrow\)2816\(\rightarrow\)1024}；三个投影；Pre-\allowbreak{}RMSNorm 与编码器末端 RMSNorm。\par\vspace{1pt}Projector：空间展开后 {\bfseries 9216\(\rightarrow\)5120\(\rightarrow\)5120，GELU}；独立 aligner {\bfseries 73.\allowbreak{}4M}。 & {\bfseries 总倍率： \(1\times 42\times 42\)。}\par\vspace{1pt}{\bfseries Patch /\allowbreak{} 压缩：}\(1\times 14\times 14\) RGB patch 展平 + Linear，588\(\rightarrow\)1024；末端 \texttt{unfold(kernel=\allowbreak{}stride=\allowbreak{}3)} 做 {\bfseries \(3\times 3\) pixel-\allowbreak{}unshuffle，\(N\rightarrow N/9\)}。不足 3 的倍数时 padding，输出空间网格为 \(\lceil h/3\rceil \times \lceil w/3\rceil \)，按取整计算；图像前向无时间池化。\par\vspace{1pt}{\bfseries 位置：}无绝对位置表；视觉 2D RoPE，\(\theta\)=\allowbreak{}10000。\par\vspace{1pt}{\bfseries 动态分辨率：是。} 按宽高和总 token 预算规划网格，通常等比 resize/\allowbreak{}pad、14 像素对齐；默认 1024 token 含分隔符。超宽图触发 \texttt{vision\_\allowbreak{}max\_\allowbreak{}wh\_\allowbreak{}ratio} 时直接 resize。 & {\bfseries 从零训练 DeepSeek-\allowbreak{}ViT。}\par\vspace{1pt}{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}①} {\bfseries SigLIP 的 sigmoid 对比损失}： {\bfseries 47B 图文对}，alt-\allowbreak{}text，最高 224² 像素。\par\vspace{1pt}{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}②} 接入{\bfseries 4B 辅助 LLM}，以 caption、alt-\allowbreak{}text、图表、OCR 做 {\bfseries 236B token 的 NTP}，分辨率 544²-1344²；随后丢弃辅助 LLM。\par\vspace{1pt}{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}③} 主模型在 {\bfseries 45T 全模态 token} 上训练：先冻结视觉塔，仅末端 Norm、projector 可训；进入 LR 衰减阶段再以更小 LR 解冻视觉塔。主训练 LR 为 \(2.6\times 10^{-4}\)，28T-40T 间衰减到 \(2.6\times 10^{-5}\)。\par\vspace{1pt}{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}④} {\bfseries SFT\(\rightarrow\)RL\(\rightarrow\)OPD}，包含多模态任务。 & 对比阶段将特征 All-\allowbreak{}Gather 与计算重叠；视觉编码与主模型训练分阶段调度，并平衡图像分配、避免重复加载。多模态 RL 中增量传输图像，缓存 CPU 解码/\allowbreak{}预处理结果，供 rollout 与训练复用。 \\
+\addlinespace[6pt]
+{\bfseries Muse Spark Open} & {\bfseries Perception Encoder，1.\allowbreak{}8B，50 层、宽度 1536。}\par\vspace{1pt}{\bfseries Attention：MHA，Q/\allowbreak{}K/\allowbreak{}V =\allowbreak{} 16/\allowbreak{}16/\allowbreak{}16 头，每头 96 维}；非因果 {\bfseries 32\(\times\)32 patch 局部窗口}；第 {\bfseries 4、8、…、48、50 层}为全局 attention。\par\vspace{1pt}FFN：普通两层 {\bfseries GELU MLP，1536\(\rightarrow\)8960\(\rightarrow\)1536}；Pre-\allowbreak{}LayerNorm，编码器入口和末端 LayerNorm。\par\vspace{1pt}Projector：合并后 {\bfseries 6144\(\rightarrow\)4096\(\rightarrow\)4096\(\rightarrow\)8192}，前两层后接 GELU，末端无缩放 RMSNorm。 & {\bfseries 总倍率：视频 \(2\times 28\times 28\)；静态图像 \(1\times 28\times 28\)。}\par\vspace{1pt}{\bfseries Patch /\allowbreak{} 压缩：}\(2\times 14\times 14\) RGB 像素块展平 + Linear，{\bfseries 1176\(\rightarrow\)1536}；末端 LayerNorm 后空间 \(2\times 2\) pixel-\allowbreak{}unshuffle，{\bfseries 1536\(\rightarrow\)6144，\(N\rightarrow N/4\)}。时间在入口融合 2 帧；静态图像复制时间维。\par\vspace{1pt}{\bfseries 位置：}32\(\times\)32 可学习空间表双线性插值 + 视觉 2D axial RoPE，\(\theta\)=\allowbreak{}10000。\par\vspace{1pt}{\bfseries 动态分辨率：是。} 按宽高比和 token 预算 resize、28 像素对齐；变长 patch 打包，\texttt{cu\_\allowbreak{}seqlens} 隔离图像/\allowbreak{}时间片，局部层另按窗口分段。 & \textemdash{}\textemdash{} & \textemdash{}\textemdash{} \\
+\addlinespace[6pt]
+{\bfseries MiMo-\allowbreak{}V2.\allowbreak{}6-\allowbreak{}Pro} & {\bfseries MiMo-\allowbreak{}ViT，681M，28 层、宽度 1280。}\par\vspace{1pt}{\bfseries Attention：GQA，Q/\allowbreak{}K/\allowbreak{}V =\allowbreak{} 32/\allowbreak{}8/\allowbreak{}8 头，每头 64 维}；24 个局部层为带 sink 的双向 SWA，一维序列左右各 64 个位置，按行/\allowbreak{}列序列化分组切换；全局层为 {\bfseries [0,9,18,27]，0 基编号}。\par\vspace{1pt}FFN：{\bfseries SwiGLU，1280\(\rightarrow\)4608\(\rightarrow\)1280}；块内 RMSNorm。\par\vspace{1pt}Projector：LayerNorm 后空间 \(2\times 2\) 拼接，{\bfseries 5120\(\rightarrow\)5120\(\rightarrow\)6144，GELU}；独立 merger。 & {\bfseries 总倍率：按模型入口时间轴为 \(2\times 32\times 32\)；末端时间倍率为 1。}\par\vspace{1pt}{\bfseries Patch /\allowbreak{} 压缩：}Conv3d 等价投影，kernel=\allowbreak{}stride=\allowbreak{}\(2\times 16\times 16\)，可展开权重用 Linear 计算；末端 LayerNorm + 空间 \(2\times 2\) 拼接 + MLP，{\bfseries \(N\rightarrow N/4\)}，无额外时间池化。\texttt{temporal\_\allowbreak{}compression\_\allowbreak{}ratio=\allowbreak{}1} 不应另乘一次时间倍率；入口时间块跨度由 \texttt{temporal\_\allowbreak{}patch\_\allowbreak{}size=\allowbreak{}2} 给出。\par\vspace{1pt}{\bfseries 位置：}无绝对位置表；视觉 2D axial RoPE。\par\vspace{1pt}{\bfseries 动态分辨率：是。} 可变网格 + \texttt{cu\_\allowbreak{}seqlens} 分隔图/\allowbreak{}时间片，局部层按行列重排。有像素预算。 & {\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}①} 视觉独立预训练：ViT 从零初始化，接入小型预训练 LLM；辅助 LLM 保持可训练，仅使用多模态理解交叉熵/\allowbreak{}NTP。训练超过 {\bfseries 4T 图像 token}。\par\vspace{1pt}{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}②} Pro 主模型先做 {\bfseries 27T 文本 token} 训练，再接入自研预训练 ViT，联合训练 {\bfseries 3T 全模态 token}；总计 30T。预训练用 AdamW。\par\vspace{1pt}{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}③} 含视觉轨迹的 mid-\allowbreak{}training：256K\(\rightarrow\)1M，并切换矩阵优化器为 Muown。\par\vspace{1pt}{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}④} 短 SFT\(\rightarrow\)包含视觉任务的混合任务 RL，得到 {\bfseries Pro-\allowbreak{}RL}；再经 MOPD2 得到 {\bfseries Pro-\allowbreak{}MOPD}。 & 视觉编码器在 TP 组内复制，先按图像做数据并行负载均衡，再把 embedding 重分发到对应 token 所在 rank；像素留在分布式 KV 存储，仅在编码时获取。多轮任务只传新增的多模态 payload。 \\
+\addlinespace[6pt]
+{\bfseries Thinking Machines Inkling} & {\bfseries HMLP，83.\allowbreak{}74M，4 级局部折叠与线性投影，输出宽度 6144。}\par\vspace{1pt}局部投影：HMLP 前三级为 {\bfseries 75\(\rightarrow\)128、512\(\rightarrow\)320、5120\(\rightarrow\)4800}，各级使用 {\bfseries Linear\(\rightarrow\)RMSNorm\(\rightarrow\)GELU}。\par\vspace{1pt}Projector：HMLP 最后一级为 {\bfseries 9600\(\rightarrow\)6144，末端 RMSNorm}。 & {\bfseries 总倍率：视频 \(2\times 40\times 40\)；静态图像 \(1\times 40\times 40\)。}\par\vspace{1pt}{\bfseries Patch /\allowbreak{} 压缩：}HMLP 前三级依次将空间 \(5\times 5\)、\(2\times 2\)、\(4\times 4\) 邻域拼到通道维，每级再接线性投影，空间网格 \(40\times 40\rightarrow 8\times 8\rightarrow 4\times 4\rightarrow 1\times 1\)；第四级拼接两个时间位置，投影为 6144 维的 1 个 token。静态图像复制时间维，不计真实帧压缩。\par\vspace{1pt}{\bfseries 位置：}HMLP 内无绝对位置表/\allowbreak{}RoPE、无 patch 间 attention。\par\vspace{1pt}{\bfseries 动态分辨率：是。} 按输入宽高切 40\(\times\)40 块，边缘 padding；可选等比 Lanczos 重缩放，官方建议每边 40-4096 像素。 & \textemdash{}\textemdash{} & \textemdash{}\textemdash{} \\
+\addlinespace[6pt]
+{\bfseries GLM-\allowbreak{}5.\allowbreak{}3-\allowbreak{}Flash} & {\bfseries ViT，404.\allowbreak{}2M，24 层、宽度 1024。}\par\vspace{1pt}{\bfseries Attention：MHA，Q/\allowbreak{}K/\allowbreak{}V =\allowbreak{} 16/\allowbreak{}16/\allowbreak{}16 头，每头 64 维}；空间网格内做非因果全局 attention；逐头 {\bfseries QK RMSNorm}。\par\vspace{1pt}FFN：{\bfseries SwiGLU，1024\(\rightarrow\)4096\(\rightarrow\)1024}，带 bias；{\bfseries gate 仅上界裁剪至 10，up 裁剪至 [-\allowbreak{}10,10]}；Pre-\allowbreak{}RMSNorm 与编码器末端 RMSNorm，\(\epsilon=10^{-5}\)。\par\vspace{1pt}Projector：空间卷积后 {\bfseries 4096\(\rightarrow\)4096，LayerNorm+GELU，再接中间维 10240 的 clipped SwiGLU\(\rightarrow\)4096}；独立 Projector 与末端空间卷积合计 {\bfseries 159.\allowbreak{}4M}。 & {\bfseries 总倍率：按模型入口时间轴为 \(2\times 28\times 28\)；patchify 后时间倍率为 1。}\par\vspace{1pt}{\bfseries Patch /\allowbreak{} 压缩：}Conv3d kernel=\allowbreak{}stride=\allowbreak{}\(2\times 14\times 14\)；末端 {\bfseries Conv2d，1024\(\rightarrow\)4096，kernel=\allowbreak{}stride=\allowbreak{}2}，将高宽各减半，{\bfseries \(N\rightarrow N/4\)}；无额外时间池化。空间压缩使用有学习参数的卷积。\par\vspace{1pt}{\bfseries 位置：}无绝对位置表；视觉 2D axial RoPE。\par\vspace{1pt}{\bfseries 动态分辨率：是。} \texttt{smart\_\allowbreak{}resize} 按预算选画布，等比 bicubic resize + 右/\allowbreak{}下 padding，28 像素对齐；变长 patch + \texttt{cu\_\allowbreak{}seqlens} 隔离图/\allowbreak{}时间片。静态图像在入口复制时间维；部署端可覆盖预算。 & \textemdash{}\textemdash{} & \textemdash{}\textemdash{} \\
+\addlinespace[6pt]
+{\bfseries dots3-\allowbreak{}note-\allowbreak{}prev} & {\bfseries MoE ViT，7B 总参数、1.\allowbreak{}2B 激活参数，42 层、宽度 1536。}发布实现估算 {\bfseries 6.\allowbreak{}80B /\allowbreak{} 单 token 激活 1.\allowbreak{}216B}。\par\vspace{1pt}{\bfseries Attention：MHA，Q/\allowbreak{}K/\allowbreak{}V =\allowbreak{} 24/\allowbreak{}24/\allowbreak{}24 头，每头 64 维}；每帧内做非因果全局 attention；{\bfseries QK RMSNorm}。\par\vspace{1pt}FFN：前 {\bfseries 25 层 dense SwiGLU，1536\(\rightarrow\)4224\(\rightarrow\)1536}；后 {\bfseries 17 层视觉 MoE}，专家数依次 {\bfseries 4,8,…,64,64}，{\bfseries Top-\allowbreak{}2}，每专家 {\bfseries 1536\(\rightarrow\)2112\(\rightarrow\)1536 SwiGLU}；Pre-\allowbreak{}RMSNorm 与编码器末端 RMSNorm。\par\vspace{1pt}Projector：LayerNorm 后空间 \(2\times 2\) 拼接，{\bfseries 6144\(\rightarrow\)6144\(\rightarrow\)5120，GELU}；独立 adapter 另 {\bfseries 69.\allowbreak{}2M}。 & {\bfseries 总倍率：\(1\times 28\times 28\)；时间不压缩。}\par\vspace{1pt}{\bfseries Patch /\allowbreak{} 压缩：}Conv2d，\(1\times 14\times 14\)；前置 \texttt{pre\_\allowbreak{}pixel\_\allowbreak{}shuffle} 仅作 \(2\times 2\) block-\allowbreak{}major 重排，token 数不变。42 层之后 adapter 才做空间 \(2\times 2\) 拼接，{\bfseries \(N\rightarrow N/4\)}；图像/\allowbreak{}视频逐帧编码，无时间池化。\par\vspace{1pt}{\bfseries 位置：}无可学习绝对位置表；视觉 2D axial RoPE，空间坐标逐帧重复。\par\vspace{1pt}{\bfseries 动态分辨率：是。} 可变 \texttt{grid\_\allowbreak{}thw}、变长 patch 和 \texttt{cu\_\allowbreak{}seqlens} 分隔图/\allowbreak{}时间片。 & \textemdash{}\textemdash{} & \textemdash{}\textemdash{} \\
+\end{longtable}
+\endgroup
+
+\clearpage
+\newgeometry{layoutsize={210mm,297mm},margin=18mm,headheight=15pt,headsep=9pt,footskip=22pt}
+\setlength{\paperwidth}{210mm}
+\setlength{\paperheight}{297mm}
+\setlength{\pdfpagewidth}{210mm}
+\setlength{\pdfpageheight}{297mm}
+\fancyhfoffset{0pt}
+\fancyhead[L]{\small\sffamily\color{notesgray}Vision Encoder / ViT Details}
+\ctexset{section={format=\Large\bfseries\sffamily\color{notesblue},beforeskip=1.5ex,afterskip=1ex},subsection={format=\large\bfseries\sffamily\color{notesblue},beforeskip=1.5ex,afterskip=1ex},subsubsection={format=\normalsize\bfseries\sffamily\color{notesblue},beforeskip=1.5ex,afterskip=0.5ex}}
+\linespread{1.10}\normalsize
+\setlength{\parskip}{0.26em}
+\setlength{\emergencystretch}{2em}
+\setlist[itemize]{leftmargin=1.7em,itemsep=0.08em,parsep=0.08em,topsep=0.22em}
+\setlength{\abovedisplayskip}{7pt plus 2pt minus 2pt}
+\setlength{\belowdisplayskip}{7pt plus 2pt minus 2pt}
+\clubpenalty=10000
+\widowpenalty=10000
+\displaywidowpenalty=10000
+
+\fancyhead[L]{\small\sffamily\color{notesgray}Vision Encoder / SigLIP 2}
+\Needspace{5\baselineskip}
+\section{SigLIP 2}
+要说近两年影响力最大的vision encoder，当之无愧是 SigLIP 2，SigLIP 2充分展现了视觉学习的现代经典思路：究极缝合怪，集百家之长。（关于这点可以稍稍参考我之前的blog “从 VAE 到 RAE：既要又要的生成latent表征”）\par
+下面我们以用的最多的 So400m 版本聊一聊\par
+\Needspace{5\baselineskip}
+\subsection{1.\allowbreak{} 架构}
+\begin{itemize}
+\item 标准 ViT，视觉塔约 400M，27 层、Hidden 1152。
+\item Attention：MHA，Q/\allowbreak{}K/\allowbreak{}V =\allowbreak{} 16/\allowbreak{}16/\allowbreak{}16 Heads，Head Dim 72；非因果全局 Attention。
+\item FFN：GELU，1152\(\rightarrow\)4304\(\rightarrow\)1152；LayerNorm，Multihead Attention Pooling（用一个 Learnable Query 在最后一层对所有 Patch 做 Cross-\allowbreak{}Attention，代替 Mean Pooling 或 CLS Token）。
+\item Text Encoder： 同样 27 层、Hidden 1152；文本长度 64，Gemma 256K Tokenizer。
+\item 训练期使用 LocCa Decoder、EMA Teacher 和辅助 Head，最终全部丢弃。
+\end{itemize}
+\Needspace{5\baselineskip}
+\subsection{2.\allowbreak{} Patch /\allowbreak{} 分辨率 /\allowbreak{} 位置编码}
+\begin{itemize}
+\item Patch： 初始预训练使用 16\(\times\)16，256² 图像，256 Visual Tokens；不压缩 Patch Tokens。
+\item 固定分辨率： Patch14 支持 224²、384²；Patch16 支持 256²、384²、512²。
+\item 位置编码： Learned Absolute Position Embedding，不使用 RoPE。
+\item 动态分辨率：NaFlex，尽量保持原始宽高比；通过双线性插值适配位置编码，支持 128/\allowbreak{}256/\allowbreak{}576/\allowbreak{}784/\allowbreak{}1024 Token Budget。
+\end{itemize}
+\begin{center}\includegraphics[width=\linewidth,height=0.30\textheight,keepaspectratio]{\detokenize{assets/siglip2.png}}\end{center}
+\Needspace{5\baselineskip}
+\subsection{3.\allowbreak{} 训练方法}
+下面简单聊聊SigLIP2千奇百怪的loss们：\par
+\Needspace{5\baselineskip}
+\subsubsection{{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}①} SigLIP + LocCa（全程训练，Loss 1:1）}
+\begin{itemize}
+\item Sigmoid Loss： Batch 内所有图文 Pair 独立进行二分类，匹配为正样本，其余为负样本。
+\Needspace{6\baselineskip}
+\item LocCa： 在 ViT 的 Patch Features 上增加 Cross-\allowbreak{}Attention Decoder，执行三个生成任务：
+\begin{itemize}
+\item Image \(\rightarrow\) Caption：生成整图描述。
+\item Region Caption \(\rightarrow\) BBox：根据区域描述预测坐标。
+\item BBox \(\rightarrow\) Region Caption：根据坐标生成区域描述。
+\end{itemize}
+\item 训练数据： 从 Alt-\allowbreak{}Text 提取词组，用 Open-\allowbreak{}Vocabulary Detector 自动生成 Region-\allowbreak{}BBox 伪标签。
+\item 训练方式： 每张图像共享一次 ViT Forward，额外执行 3 次 Decoder Forward；Captioning 有 50\% 概率使用非因果并行 Token Prediction。
+\item Decoder 仅用于训练，推理时丢弃。
+\end{itemize}
+\Needspace{5\baselineskip}
+\subsubsection{{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}②} SILC /\allowbreak{} TIPS（最后 20\% 加入）}
+采用 DINO/\allowbreak{}iBOT 风格的 EMA Teacher-\allowbreak{}Student 自监督：\par
+\begin{itemize}
+\item SILC（Loss 权重 1.\allowbreak{}0）： Teacher 看 1 个 Global View，Student 看 8 个 Local Views，通过额外 MLP Head 匹配全局语义分布，增强局部与全局表征一致性。
+\item TIPS（Loss 权重 0.\allowbreak{}25）： Teacher 看完整 Global View，Student 随机 Mask 50\% Patch Embeddings，预测对应位置的 Teacher Features，不是重建 RGB。
+\item Teacher 由 Student 的 EMA 更新，不反传梯度；SigLIP/\allowbreak{}LocCa 仍使用原始图像，自监督额外使用增强图像。
+\end{itemize}
+So400m 最后 20\% 的总 Loss：\par
+\[
+\mathcal{L}=\mathcal{L}_{\mathrm{SigLIP}}+\mathcal{L}_{\mathrm{LocCa}}+\mathcal{L}_{\mathrm{SILC}}+0.25\mathcal{L}_{\mathrm{TIPS}}
+\]
+\Needspace{5\baselineskip}
+\subsubsection{{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}③} 分辨率适配（两条独立分支）}
+FixRes： 从 95\% 训练进度的 Checkpoint 分叉。\par
+\begin{itemize}
+\item 提高图像分辨率，对 Learned Position Embedding 进行 2D 插值，例如 16\(\times\)16 \(\rightarrow\) 24\(\times\)24。
+\item Patch16 \(\rightarrow\) Patch14 时，通过 PI-\allowbreak{}Resize（Pseudoinverse） 转换 Patch Embedding 权重，尽量保持投影结果一致。
+\item 在目标分辨率继续剩余 5\% 训练，保留全部 Loss；不同分辨率分别保存 Checkpoint。
+\end{itemize}
+NaFlex： 从 90\% Checkpoint 分叉。\par
+\begin{itemize}
+\item 尽量保持原始宽高比，Resize 至 Patch Size 整数倍，不强制正方形。
+\item 每个 Batch 从 \texttt{\{128, 256, 576, 784, 1024\}} 采样 Token Budget。
+\item 对 16\(\times\)16 Learned PE 双线性插值到目标 Patch Grid，Attention Mask 屏蔽 Padding。
+\item 训练末段 LR Schedule 延长 3.\allowbreak{}75 倍；不使用 SILC/\allowbreak{}TIPS，仅保留 SigLIP + LocCa。
+\end{itemize}
+\Needspace{5\baselineskip}
+\subsubsection{{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}④} ACID：小模型的数据筛选蒸馏}
+So400m 后面可以作为 ViT-\allowbreak{}B 的 Teacher进行 ACID 蒸馏\par
+\begin{itemize}
+\item So400m 先在高质量数据上额外训练 1B 样本。
+\item Teacher 与 Student 为候选样本计算 Learnability，优先选择 Teacher 已掌握、Student 尚未掌握 的样本。
+\item 从 64K Super-\allowbreak{}batch 筛选 32K，Student 继续训练 4B 样本。
+\item 只使用 Sigmoid Loss，不直接蒸馏 Teacher Logits /\allowbreak{} Features。
+\end{itemize}
+\clearpage
+\fancyhead[L]{\small\sffamily\color{notesgray}Vision Encoder / Perception Encoder（PE-\allowbreak{}G）}
+\Needspace{5\baselineskip}
+\section{Perception Encoder（PE-\allowbreak{}G）}
+不同于 SigLIP 2 组合多种预训练 Loss， Perception Encoder（PE）主要依靠大规模 CLIP Contrastive Learning，发现强大的通用视觉特征隐藏在中间层，再通过 Alignment Tuning 将这些能力迁移到输出层。\par
+\Needspace{5\baselineskip}
+\subsection{1.\allowbreak{} 架构}
+\begin{itemize}
+\item 标准 ViT，视觉塔 1.\allowbreak{}88B，50 层、Hidden 1536。
+\item Attention：MHA，Q/\allowbreak{}K/\allowbreak{}V =\allowbreak{} 16/\allowbreak{}16/\allowbreak{}16 Heads，Head Dim 96；非因果全局 Attention。
+\item FFN：1536\(\rightarrow\)8960\(\rightarrow\)1536；8 Heads Attention Pooling，不使用 CLS Token。
+\item Text Encoder：0.\allowbreak{}47B，24 层、Hidden 1280；20 Heads，FFN 5120，文本长度 72；图文对比维度 1280。
+\end{itemize}
+\Needspace{5\baselineskip}
+\subsection{2.\allowbreak{} Patch /\allowbreak{} 分辨率 /\allowbreak{} 位置编码}
+\begin{itemize}
+\item Patch：14\(\times\)14，最终 448² 图像对应 1024 Visual Tokens，不压缩 Patch Features。
+\item 位置编码：2D RoPE + Learned Absolute PE，后者支持插值。
+\item Progressive Resolution：98²\(\rightarrow\)154²\(\rightarrow\)224²\(\rightarrow\)336²\(\rightarrow\)448²。
+\end{itemize}
+\Needspace{5\baselineskip}
+\subsection{3.\allowbreak{} 训练方法}
+\Needspace{5\baselineskip}
+\subsubsection{{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}①} CLIP Contrastive Pretraining}
+\begin{itemize}
+\item Loss：传统 CLIP 双向 Softmax Contrastive Loss，而非 SigLIP 的 Sigmoid Loss。
+\item 数据：MetaCLIP 筛选的 5.\allowbreak{}4B Image-\allowbreak{}Text Pairs，累计 86B Samples Seen。
+\item 优化：LAMB，Batch Size 131K，LR 2e-\allowbreak{}3，训练 656K Steps。
+\item Augmentation：Random Crop（0.\allowbreak{}08-1.\allowbreak{}0）、Color Jitter、Horizontal Flip。
+\item Mask Regularization：额外复制 1/\allowbreak{}16 Batch，随机 Mask 40\% Patches，对齐 Masked/\allowbreak{}Unmasked Features 的 Cosine Similarity；与 CLIP Loss 的梯度路径分离。
+\end{itemize}
+\Needspace{5\baselineskip}
+\subsubsection{{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}②} Video Finetuning}
+\begin{itemize}
+\item 先使用 50M Images 做 Cooldown，再使用 22M Recaptioned Videos 微调。
+\item 视频 Caption：结合 Video Captioner、Frame Captions 和 Metadata，再由 Llama 3.\allowbreak{}3 70B 整合。
+\item 每个视频均匀采样 8 Frames，分别经过相同 ViT，Mean Pooling 得到 Video Embedding。
+\item 继续使用 CLIP Contrastive Loss，不增加 Temporal Attention。
+\end{itemize}
+\Needspace{5\baselineskip}
+\subsubsection{{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}③} Intermediate Layer：}
+PE-\allowbreak{}G 的最佳视觉特征不一定在最后一层：\par
+\begin{itemize}
+\item OCR：第 38 层；VQA：第 47 层。
+\item Detection /\allowbreak{} Depth：第 39 层；Tracking：第 32 层。
+\item 从第 33 层开始出现 Global Tokens，后面 18 层逐渐承担全局语义聚合，导致部分局部空间信息丢失。
+\end{itemize}
+因此，作者从 PE-\allowbreak{}core-\allowbreak{}G 分叉出两种 Alignment：\par
+\begin{itemize}
+\item PE-\allowbreak{}lang-\allowbreak{}G：保留前 47 层，丢弃最后 3 层；连接 Llama 3.\allowbreak{}2 3B + MLP Projector，使用 70M 多模态样本通过 CE Loss 联合微调，增强 OCR/\allowbreak{}VQA 等语言理解能力。
+\item PE-\allowbreak{}spatial-\allowbreak{}G：同时蒸馏 Frozen PE-\allowbreak{}core-\allowbreak{}G 第 41 层的语义特征与 SAM 2.\allowbreak{}1 的 Mask Logits 空间对应关系；使用 75\% Masking，训练 300M Samples，使最后一层具备更强的 Dense Features。
+\end{itemize}
+\clearpage
+\fancyhead[L]{\small\sffamily\color{notesgray}Vision Encoder / Encoder-\allowbreak{}Free}
+\Needspace{5\baselineskip}
+\section{Encoder-\allowbreak{}Free}
+最后顺便推销在我们力推的Encoder-\allowbreak{}Free吧！非常令人振奋的是，在我写这篇blog的时候，微软发布了他们最新的3T模型 MAI-\allowbreak{}Base-\allowbreak{}2，正是 Encoder Free VLM！\par
+Encoder Free的核心就是去掉独立的深层视觉编码器，改用轻量的patchify 投影输入，可以参考 NEO NEO-\allowbreak{}ov， SenseNova-\allowbreak{}U1，SenseNova-\allowbreak{}U1.\allowbreak{}5，Gemma4-\allowbreak{}12B，Inking（建议考古 Haiwen Diao的publication list，原生建模的老大哥）\par
+这会有什么好处呢？\par
+\begin{center}\includegraphics[width=\linewidth,height=0.30\textheight,keepaspectratio]{\detokenize{assets/encoder-free.png}}\end{center}
+此外，我之前也有篇 Blog "为什么我们想拿掉 Vision Encoder？"(可以在主页搜hh)也有提及 Infra 的一些小小小小小小好处。 归根结底，我一向的taste是 "removing inductive bias as much as possible to let the model architecture take its natural and intended form"，如果去除它也可以，那 Why not?\par
+\end{document}

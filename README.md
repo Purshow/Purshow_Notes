@@ -12,6 +12,7 @@ Personal research notes.
 - `OPD/CN`, `OPD/EN`: On-Policy Distillation
 - `Ngram_Embedding/CN`, `Ngram_Embedding/EN`: Sparse Vocab Embeddings: Over Encoding, PLE, and Engram
 - `Video_VAE/CN`, `Video_VAE/EN`: VAEs for Video Generation Models
+- `Vision_Encoder/CN`, `Vision_Encoder/EN`: Vision Encoder Architectures and Multimodal Training
 - `WAM/CN`, `WAM/EN`: World Action Models
 - `YOCO/CN`, `YOCO/EN`: YOCO: Cross-Layer KV Sharing
 
@@ -22,6 +23,7 @@ bash Beyond_Residual/build.sh
 bash YOCO/build.sh
 bash Ngram_Embedding/build.sh
 bash Video_VAE/build.sh
+bash Vision_Encoder/build.sh
 bash Muon/CN/build.sh
 bash Muon/EN/build.sh
 (cd Attention/CN && xelatex -interaction=nonstopmode -halt-on-error Attention.tex && xelatex -interaction=nonstopmode -halt-on-error Attention.tex)

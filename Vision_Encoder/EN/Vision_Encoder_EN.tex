@@ -1,0 +1,204 @@
+\input{pdf-header.tex}
+\begin{document}
+{\sffamily\bfseries\color{notesblue}\fontsize{23}{28}\selectfont Vision Encoder Architectures and Multimodal Training\par}
+\vspace{1mm}{\color{notesblue}\rule{\linewidth}{0.8pt}}\par\vspace{1mm}
+{\small {\bfseries Compression convention:} Overall factors are written as {\bfseries time \(\times\) height \(\times\) width}, measuring the nominal reduction from the input pixel/\allowbreak{}time grid to the output visual-\allowbreak{}token grid, including patchification.\allowbreak{} \(N\) denotes the effective token count after patchification and before the final merge.\allowbreak{} Frame sampling and resizing are excluded from network compression; boundary padding is handled by rounding up.\allowbreak{} Replicating a static image along the time dimension does not count as actual frame compression; the temporal factor of 1 for images is a placeholder.\allowbreak{}}\par\vspace{2pt}
+{\small {\bfseries Dynamic-\allowbreak{}resolution convention:} A variable two-\allowbreak{}dimensional patch grid and effective token count, allowing resizing/\allowbreak{}padding within a budget.\allowbreak{}}\par\vspace{2pt}
+\begingroup
+\fontsize{9.5pt}{12pt}\selectfont
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.02}
+\setlength{\extrarowheight}{2pt}
+\setlength{\LTpre}{5pt}
+\setlength{\LTpost}{6pt}
+\setlength{\parskip}{0pt}
+\setlength{\emergencystretch}{2em}
+\begin{longtable}{@{}P{0.100\dimexpr\textwidth-40pt\relax}P{0.230\dimexpr\textwidth-40pt\relax}P{0.290\dimexpr\textwidth-40pt\relax}P{0.240\dimexpr\textwidth-40pt\relax}P{0.140\dimexpr\textwidth-40pt\relax}@{}}
+\toprule
+
+\textbf{Model} & \textbf{Visual module architecture} & \textbf{Spatiotemporal compression, position encoding, and dynamic resolution} & \textbf{Multimodal training recipe} & \textbf{Visual-\allowbreak{}input infrastructure optimizations} \\
+\midrule\endfirsthead
+\toprule
+\textbf{Model} & \textbf{Visual module architecture} & \textbf{Spatiotemporal compression, position encoding, and dynamic resolution} & \textbf{Multimodal training recipe} & \textbf{Visual-\allowbreak{}input infrastructure optimizations} \\
+\midrule\endhead
+\midrule
+\multicolumn{5}{r}{\footnotesize\color{notesgray}Continued on next page}\endfoot
+\bottomrule\endlastfoot
+{\bfseries MAI-\allowbreak{}Base-\allowbreak{}2} & {\bfseries The biggest, newest, strongest Encoder-\allowbreak{}Free model!!!} & \textemdash{} & \textemdash{} & \textemdash{} \\
+\addlinespace[6pt]
+{\bfseries Kimi K3} & {\bfseries MoonViT-\allowbreak{}V2, 401M, 27 layers, width 1024.\allowbreak{}}\par\vspace{1pt}{\bfseries Attention: MHA, Q/\allowbreak{}K/\allowbreak{}V =\allowbreak{} 12/\allowbreak{}12/\allowbreak{}12 heads, head dimension 128.\allowbreak{}} According to the \href{\detokenize{https://huggingface.co/moonshotai/Kimi-K3/blob/f831ab66814297da540d832a5235f8e904f29d06/modeling_kimi_k3.py#L603-L615}}{official public code}, all \(T H W\) tokens within each chunk use non-\allowbreak{}causal global attention, jointly over space and time.\allowbreak{}\par\vspace{1pt}FFN: standard two-\allowbreak{}layer {\bfseries GELU-\allowbreak{}tanh MLP, 1024\(\rightarrow\)4096\(\rightarrow\)1024}; final encoder RMSNorm.\allowbreak{}\par\vspace{1pt}Projector: after merging, {\bfseries 4096\(\rightarrow\)4096\(\rightarrow\)7168, GELU, final RMSNorm}.\allowbreak{} & {\bfseries Overall: \(t\times 28\times 28\); \(4\times 28\times 28\) for a full four-\allowbreak{}frame chunk.\allowbreak{}}\par\vspace{1pt}{\bfseries Patch /\allowbreak{} compression:} Conv2d, \(1\times 14\times 14\).\allowbreak{} After 27 ViT layers and final RMSNorm, \texttt{mean(dim=\allowbreak{}0)} averages features at the same spatial location and channel across \(t\) frames; spatial \(2\times 2\) neighborhoods are then concatenated along channels, {\bfseries \(N\rightarrow N/(4t)\)}.\allowbreak{} Each chunk has \(1\leq t\leq 4\); one forward pass can pack multiple chunks, pooled independently.\allowbreak{} Separate images use \(t=1\).\allowbreak{}\par\vspace{1pt}{\bfseries Position:} bilinearly interpolated learned 64\(\times\)64 spatial table + fixed temporal encoding; 2D RoPE inside attention, with spatial coordinates repeated across frames.\allowbreak{}\par\vspace{1pt}{\bfseries Dynamic resolution: yes.\allowbreak{}} Variable \(T,H,W\) grids, packed variable-\allowbreak{}length patches, and chunk isolation via \texttt{cu\_\allowbreak{}seqlens}.\allowbreak{} Up to 3584\(\times\)3584.\allowbreak{} & {\bfseries MoonViT-\allowbreak{}V2 is trained from scratch, jointly on images and text from the start of main-\allowbreak{}model training, with an autoregressive objective.\allowbreak{}}\par\vspace{1pt}Visual data includes captions, interleaved image-\allowbreak{}text, OCR, perception, video, visual code, and rendered SVGs, webpages, games, and CAD data.\allowbreak{} Optimization uses per-\allowbreak{}head Muon, {\bfseries 1\% warmup, cosine scheduling, and weight decay 0.\allowbreak{}1}.\allowbreak{}\par\vspace{1pt}Related post-\allowbreak{}training: {\bfseries SFT \(\rightarrow\) domain-\allowbreak{}expert RL including visual tasks \(\rightarrow\) multi-\allowbreak{}teacher on-\allowbreak{}policy distillation}.\allowbreak{} & Visual context parallelism shards image patches, gathers KV, and dynamically partitions subgroups to balance large-\allowbreak{}image workloads.\allowbreak{} Visual-\allowbreak{}encoder forward and backward passes fill idle intervals in the main training pipeline, reducing waits caused by visual processing.\allowbreak{} \\
+\addlinespace[6pt]
+{\bfseries Qwen3.\allowbreak{}8-\allowbreak{}Flash-\allowbreak{}Next} & {\bfseries ViT, 415.\allowbreak{}9M, 27 layers, width 1152.\allowbreak{}}\par\vspace{1pt}{\bfseries Attention: MHA, Q/\allowbreak{}K/\allowbreak{}V =\allowbreak{} 16/\allowbreak{}16/\allowbreak{}16 heads, head dimension 72}; non-\allowbreak{}causal global attention within each temporal slice.\allowbreak{}\par\vspace{1pt}FFN: standard two-\allowbreak{}layer {\bfseries GELU-\allowbreak{}tanh MLP, 1152\(\rightarrow\)4304\(\rightarrow\)1152}.\allowbreak{}\par\vspace{1pt}Projector: LayerNorm followed by spatial \(2\times 2\) concatenation, {\bfseries 4608\(\rightarrow\)4608\(\rightarrow\)2560, GELU}.\allowbreak{} & {\bfseries Overall: \(2\times 32\times 32\); 2\(\times\) temporal compression at patchification, with no subsequent temporal reduction.\allowbreak{}}\par\vspace{1pt}{\bfseries Patch /\allowbreak{} compression:} Conv3d kernel=\allowbreak{}stride=\allowbreak{}\(2\times 16\times 16\); final LayerNorm followed by spatial \(2\times 2\) concatenation + MLP, {\bfseries \(N\rightarrow N/4\)}.\allowbreak{} Only additional spatial compression; no final temporal pooling.\allowbreak{}\par\vspace{1pt}{\bfseries Position:} bilinearly interpolated 48\(\times\)48 absolute-\allowbreak{}position table; 2D RoPE inside visual attention.\allowbreak{}\par\vspace{1pt}{\bfseries Dynamic resolution: yes.\allowbreak{}} Variable \(T,H,W\) grids, packed variable-\allowbreak{}length patches, and chunk isolation via \texttt{cu\_\allowbreak{}seqlens}.\allowbreak{} & \textemdash{} & \textemdash{} \\
+\addlinespace[6pt]
+{\bfseries DeepSeek-\allowbreak{}V4.\allowbreak{}1-\allowbreak{}Flash} & {\bfseries DeepSeek-\allowbreak{}ViT, 411.\allowbreak{}8M, 32 layers, width 1024.\allowbreak{}}\par\vspace{1pt}{\bfseries Attention: MHA, Q/\allowbreak{}K/\allowbreak{}V =\allowbreak{} 16/\allowbreak{}16/\allowbreak{}16 heads, head dimension 64}; non-\allowbreak{}causal global attention within each image.\allowbreak{}\par\vspace{1pt}FFN: {\bfseries SwiGLU, 1024\(\rightarrow\)2816\(\rightarrow\)1024}, three projections; pre-\allowbreak{}RMSNorm and final encoder RMSNorm.\allowbreak{}\par\vspace{1pt}Projector: after spatial unfolding, {\bfseries 9216\(\rightarrow\)5120\(\rightarrow\)5120, GELU}; separate {\bfseries 73.\allowbreak{}4M} aligner.\allowbreak{} & {\bfseries Overall: \(1\times 42\times 42\).\allowbreak{}}\par\vspace{1pt}{\bfseries Patch /\allowbreak{} compression:} flatten \(1\times 14\times 14\) RGB patches + Linear, 588\(\rightarrow\)1024; final \texttt{unfold(kernel=\allowbreak{}stride=\allowbreak{}3)} performs {\bfseries \(3\times 3\) pixel-\allowbreak{}unshuffle, \(N\rightarrow N/9\)}.\allowbreak{} Pad grids that are not multiples of 3; output spatial grid is \(\lceil h/3\rceil \times \lceil w/3\rceil \), using rounded-\allowbreak{}up dimensions.\allowbreak{} No temporal pooling in the image forward pass.\allowbreak{}\par\vspace{1pt}{\bfseries Position:} no absolute-\allowbreak{}position table; visual 2D RoPE, \(\theta\)=\allowbreak{}10000.\allowbreak{}\par\vspace{1pt}{\bfseries Dynamic resolution: yes.\allowbreak{}} Plan the grid from aspect ratio and total token budget, usually with aspect-\allowbreak{}preserving resize/\allowbreak{}pad and 14-\allowbreak{}pixel alignment; the default 1024-\allowbreak{}token budget includes separators.\allowbreak{} Extra-\allowbreak{}wide images are directly resized when \texttt{vision\_\allowbreak{}max\_\allowbreak{}wh\_\allowbreak{}ratio} is triggered.\allowbreak{} & {\bfseries DeepSeek-\allowbreak{}ViT is trained from scratch.\allowbreak{}}\par\vspace{1pt}{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}①} {\bfseries SigLIP sigmoid contrastive loss}: {\bfseries 47B image-\allowbreak{}text pairs}, alt-\allowbreak{}text, up to 224² pixels.\allowbreak{}\par\vspace{1pt}{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}②} Attach a {\bfseries 4B auxiliary LLM} for {\bfseries 236B tokens of NTP} using captions, alt-\allowbreak{}text, charts, and OCR at 544²-1344² resolution; then discard the auxiliary LLM.\allowbreak{}\par\vspace{1pt}{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}③} Train the main model on {\bfseries 45T all-\allowbreak{}modality tokens}: initially freeze the visual tower, training only its final Norm and projector; unfreeze the tower at a smaller LR during LR decay.\allowbreak{} Main-\allowbreak{}training LR is \(2.6\times 10^{-4}\), decaying to \(2.6\times 10^{-5}\) between 28T and 40T tokens.\allowbreak{}\par\vspace{1pt}{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}④} {\bfseries SFT\(\rightarrow\)RL\(\rightarrow\)OPD}, including multimodal tasks.\allowbreak{} & Overlap feature All-\allowbreak{}Gather with computation during contrastive training.\allowbreak{} Schedule visual encoding and main-\allowbreak{}model training in stages, balance image assignment, and avoid duplicate loading.\allowbreak{} Multimodal RL transfers images incrementally and caches CPU decoding/\allowbreak{}preprocessing for reuse by rollout and training.\allowbreak{} \\
+\addlinespace[6pt]
+{\bfseries Muse Spark Open} & {\bfseries Perception Encoder, 1.\allowbreak{}8B, 50 layers, width 1536.\allowbreak{}}\par\vspace{1pt}{\bfseries Attention: MHA, Q/\allowbreak{}K/\allowbreak{}V =\allowbreak{} 16/\allowbreak{}16/\allowbreak{}16 heads, head dimension 96}; non-\allowbreak{}causal {\bfseries 32\(\times\)32-\allowbreak{}patch local windows}.\allowbreak{} Layers {\bfseries 4, 8, …, 48, 50} use global attention.\allowbreak{}\par\vspace{1pt}FFN: standard two-\allowbreak{}layer {\bfseries GELU MLP, 1536\(\rightarrow\)8960\(\rightarrow\)1536}; pre-\allowbreak{}LayerNorm, plus input and final encoder LayerNorm.\allowbreak{}\par\vspace{1pt}Projector: after merging, {\bfseries 6144\(\rightarrow\)4096\(\rightarrow\)4096\(\rightarrow\)8192}, GELU after the first two layers, and final RMSNorm without scaling.\allowbreak{} & {\bfseries Overall: \(2\times 28\times 28\) for video; \(1\times 28\times 28\) for static images.\allowbreak{}}\par\vspace{1pt}{\bfseries Patch /\allowbreak{} compression:} flatten \(2\times 14\times 14\) RGB pixel blocks + Linear, {\bfseries 1176\(\rightarrow\)1536}; final LayerNorm followed by spatial \(2\times 2\) pixel-\allowbreak{}unshuffle, {\bfseries 1536\(\rightarrow\)6144, \(N\rightarrow N/4\)}.\allowbreak{} Two frames are fused at the input; static images are replicated along time.\allowbreak{}\par\vspace{1pt}{\bfseries Position:} bilinearly interpolated learned 32\(\times\)32 spatial table + visual 2D axial RoPE, \(\theta\)=\allowbreak{}10000.\allowbreak{}\par\vspace{1pt}{\bfseries Dynamic resolution: yes.\allowbreak{}} Resize according to aspect ratio and token budget, with 28-\allowbreak{}pixel alignment.\allowbreak{} Pack variable-\allowbreak{}length patches; \texttt{cu\_\allowbreak{}seqlens} separates images/\allowbreak{}temporal slices, with additional window segmentation in local layers.\allowbreak{} & \textemdash{} & \textemdash{} \\
+\addlinespace[6pt]
+{\bfseries MiMo-\allowbreak{}V2.\allowbreak{}6-\allowbreak{}Pro} & {\bfseries MiMo-\allowbreak{}ViT, 681M, 28 layers, width 1280.\allowbreak{}}\par\vspace{1pt}{\bfseries Attention: GQA, Q/\allowbreak{}K/\allowbreak{}V =\allowbreak{} 32/\allowbreak{}8/\allowbreak{}8 heads, head dimension 64}.\allowbreak{} The 24 local layers use bidirectional SWA with sinks, covering 64 positions on either side in the one-\allowbreak{}dimensional sequence and switching row/\allowbreak{}column serialization by group.\allowbreak{} Global layers: {\bfseries [0,9,18,27], zero-\allowbreak{}indexed}.\allowbreak{}\par\vspace{1pt}FFN: {\bfseries SwiGLU, 1280\(\rightarrow\)4608\(\rightarrow\)1280}; RMSNorm within blocks.\allowbreak{}\par\vspace{1pt}Projector: LayerNorm followed by spatial \(2\times 2\) concatenation, {\bfseries 5120\(\rightarrow\)5120\(\rightarrow\)6144, GELU}; separate merger.\allowbreak{} & {\bfseries Overall: \(2\times 32\times 32\) along the model's input time axis; final temporal factor is 1.\allowbreak{}}\par\vspace{1pt}{\bfseries Patch /\allowbreak{} compression:} Conv3d-\allowbreak{}equivalent projection, kernel=\allowbreak{}stride=\allowbreak{}\(2\times 16\times 16\), executable as a Linear operation with reshaped weights; final LayerNorm + spatial \(2\times 2\) concatenation + MLP, {\bfseries \(N\rightarrow N/4\)}.\allowbreak{} No additional temporal pooling.\allowbreak{} \texttt{temporal\_\allowbreak{}compression\_\allowbreak{}ratio=\allowbreak{}1} must not introduce another temporal factor; \texttt{temporal\_\allowbreak{}patch\_\allowbreak{}size=\allowbreak{}2} determines the input block's temporal span.\allowbreak{}\par\vspace{1pt}{\bfseries Position:} no absolute-\allowbreak{}position table; visual 2D axial RoPE.\allowbreak{}\par\vspace{1pt}{\bfseries Dynamic resolution: yes.\allowbreak{}} Variable grids + \texttt{cu\_\allowbreak{}seqlens} separate images/\allowbreak{}temporal slices; local layers reorder rows/\allowbreak{}columns.\allowbreak{} A pixel budget applies.\allowbreak{} & {\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}①} Separate visual pretraining: randomly initialize the ViT and attach a small pretrained LLM, which remains trainable.\allowbreak{} Use only multimodal-\allowbreak{}understanding cross-\allowbreak{}entropy/\allowbreak{}NTP, with over {\bfseries 4T image tokens}.\allowbreak{}\par\vspace{1pt}{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}②} The Pro main model first trains on {\bfseries 27T text tokens}, then adds the internally pretrained ViT for joint training on {\bfseries 3T all-\allowbreak{}modality tokens}; 30T total.\allowbreak{} Pretraining uses AdamW.\allowbreak{}\par\vspace{1pt}{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}③} Mid-\allowbreak{}training with visual trajectories: 256K\(\rightarrow\)1M context, switching the matrix optimizer to Muown.\allowbreak{}\par\vspace{1pt}{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}④} Short SFT\(\rightarrow\)mixed-\allowbreak{}task RL including visual tasks yields {\bfseries Pro-\allowbreak{}RL}; MOPD2 then yields {\bfseries Pro-\allowbreak{}MOPD}.\allowbreak{} & Replicate the visual encoder within each TP group; first balance images through data parallelism, then redistribute embeddings to the ranks holding the corresponding tokens.\allowbreak{} Pixels stay in distributed KV storage and are fetched only for encoding.\allowbreak{} Multi-\allowbreak{}turn tasks transfer only newly added multimodal payloads.\allowbreak{} \\
+\addlinespace[6pt]
+{\bfseries Thinking Machines Inkling} & {\bfseries HMLP, 83.\allowbreak{}74M, four stages of local folding and linear projection, output width 6144.\allowbreak{}}\par\vspace{1pt}Local projections: the first three HMLP stages are {\bfseries 75\(\rightarrow\)128, 512\(\rightarrow\)320, 5120\(\rightarrow\)4800}, each using {\bfseries Linear\(\rightarrow\)RMSNorm\(\rightarrow\)GELU}.\allowbreak{}\par\vspace{1pt}Projector: the final HMLP stage is {\bfseries 9600\(\rightarrow\)6144, final RMSNorm}.\allowbreak{} & {\bfseries Overall: \(2\times 40\times 40\) for video; \(1\times 40\times 40\) for static images.\allowbreak{}}\par\vspace{1pt}{\bfseries Patch /\allowbreak{} compression:} the first three stages concatenate spatial \(5\times 5\), \(2\times 2\), and \(4\times 4\) neighborhoods into channels, each followed by a linear projection.\allowbreak{} The spatial grid becomes \(40\times 40\rightarrow 8\times 8\rightarrow 4\times 4\rightarrow 1\times 1\).\allowbreak{} The fourth stage concatenates two temporal positions and projects them into one 6144-\allowbreak{}dimensional token.\allowbreak{} Static images are replicated along time, which does not count as actual frame compression.\allowbreak{}\par\vspace{1pt}{\bfseries Position:} no absolute-\allowbreak{}position table/\allowbreak{}RoPE or inter-\allowbreak{}patch attention inside HMLP.\allowbreak{}\par\vspace{1pt}{\bfseries Dynamic resolution: yes.\allowbreak{}} Split the input into 40\(\times\)40 blocks and pad boundaries.\allowbreak{} Optional aspect-\allowbreak{}preserving Lanczos rescaling; official guidance recommends 40-4096 pixels per side.\allowbreak{} & \textemdash{} & \textemdash{} \\
+\addlinespace[6pt]
+{\bfseries GLM-\allowbreak{}5.\allowbreak{}3-\allowbreak{}Flash} & {\bfseries ViT, 404.\allowbreak{}2M, 24 layers, width 1024.\allowbreak{}}\par\vspace{1pt}{\bfseries Attention: MHA, Q/\allowbreak{}K/\allowbreak{}V =\allowbreak{} 16/\allowbreak{}16/\allowbreak{}16 heads, head dimension 64}; non-\allowbreak{}causal global attention over the spatial grid; per-\allowbreak{}head {\bfseries QK RMSNorm}.\allowbreak{}\par\vspace{1pt}FFN: {\bfseries SwiGLU, 1024\(\rightarrow\)4096\(\rightarrow\)1024}, with bias; {\bfseries gate clipped only above at 10, up clipped to [-\allowbreak{}10,10]}; pre-\allowbreak{}RMSNorm and final encoder RMSNorm, \(\epsilon=10^{-5}\).\allowbreak{}\par\vspace{1pt}Projector: after spatial convolution, {\bfseries 4096\(\rightarrow\)4096, LayerNorm+GELU, then clipped SwiGLU with intermediate width 10240\(\rightarrow\)4096}; separate projector and final spatial convolution total {\bfseries 159.\allowbreak{}4M}.\allowbreak{} & {\bfseries Overall: \(2\times 28\times 28\) along the model's input time axis; temporal factor after patchification is 1.\allowbreak{}}\par\vspace{1pt}{\bfseries Patch /\allowbreak{} compression:} Conv3d kernel=\allowbreak{}stride=\allowbreak{}\(2\times 14\times 14\); final {\bfseries Conv2d, 1024\(\rightarrow\)4096, kernel=\allowbreak{}stride=\allowbreak{}2}, halves height and width, {\bfseries \(N\rightarrow N/4\)}.\allowbreak{} No additional temporal pooling.\allowbreak{} Spatial compression uses a learned convolution.\allowbreak{}\par\vspace{1pt}{\bfseries Position:} no absolute-\allowbreak{}position table; visual 2D axial RoPE.\allowbreak{}\par\vspace{1pt}{\bfseries Dynamic resolution: yes.\allowbreak{}} \texttt{smart\_\allowbreak{}resize} selects a canvas under a budget, applies aspect-\allowbreak{}preserving bicubic resizing and right/\allowbreak{}bottom padding, with 28-\allowbreak{}pixel alignment.\allowbreak{} Variable-\allowbreak{}length patches + \texttt{cu\_\allowbreak{}seqlens} separate images/\allowbreak{}temporal slices.\allowbreak{} Static images are replicated along time at the input; deployment can override the budget.\allowbreak{} & \textemdash{} & \textemdash{} \\
+\addlinespace[6pt]
+{\bfseries dots3-\allowbreak{}note-\allowbreak{}prev} & {\bfseries MoE ViT, 7B total parameters, 1.\allowbreak{}2B active parameters, 42 layers, width 1536.\allowbreak{}} Estimates from the released implementation: {\bfseries 6.\allowbreak{}80B total /\allowbreak{} 1.\allowbreak{}216B active per token}.\allowbreak{}\par\vspace{1pt}{\bfseries Attention: MHA, Q/\allowbreak{}K/\allowbreak{}V =\allowbreak{} 24/\allowbreak{}24/\allowbreak{}24 heads, head dimension 64}; non-\allowbreak{}causal global attention within each frame; {\bfseries QK RMSNorm}.\allowbreak{}\par\vspace{1pt}FFN: first {\bfseries 25 layers use dense SwiGLU, 1536\(\rightarrow\)4224\(\rightarrow\)1536}; final {\bfseries 17 layers use visual MoE}, with expert counts {\bfseries 4,8,…,64,64}, {\bfseries Top-\allowbreak{}2}, and {\bfseries 1536\(\rightarrow\)2112\(\rightarrow\)1536 SwiGLU} per expert.\allowbreak{} Pre-\allowbreak{}RMSNorm and final encoder RMSNorm.\allowbreak{}\par\vspace{1pt}Projector: LayerNorm followed by spatial \(2\times 2\) concatenation, {\bfseries 6144\(\rightarrow\)6144\(\rightarrow\)5120, GELU}; separate adapter adds {\bfseries 69.\allowbreak{}2M}.\allowbreak{} & {\bfseries Overall: \(1\times 28\times 28\); no temporal compression.\allowbreak{}}\par\vspace{1pt}{\bfseries Patch /\allowbreak{} compression:} Conv2d, \(1\times 14\times 14\).\allowbreak{} The initial \texttt{pre\_\allowbreak{}pixel\_\allowbreak{}shuffle} only performs \(2\times 2\) block-\allowbreak{}major reordering, keeping token count unchanged.\allowbreak{} Spatial \(2\times 2\) concatenation occurs only in the adapter after all 42 layers, {\bfseries \(N\rightarrow N/4\)}.\allowbreak{} Images/\allowbreak{}videos are encoded frame by frame, with no temporal pooling.\allowbreak{}\par\vspace{1pt}{\bfseries Position:} no learned absolute-\allowbreak{}position table; visual 2D axial RoPE, with spatial coordinates repeated per frame.\allowbreak{}\par\vspace{1pt}{\bfseries Dynamic resolution: yes.\allowbreak{}} Variable \texttt{grid\_\allowbreak{}thw}, variable-\allowbreak{}length patches, and \texttt{cu\_\allowbreak{}seqlens} separating images/\allowbreak{}temporal slices.\allowbreak{} & \textemdash{} & \textemdash{} \\
+\end{longtable}
+\endgroup
+
+\clearpage
+\newgeometry{layoutsize={210mm,297mm},margin=18mm,headheight=15pt,headsep=9pt,footskip=22pt}
+\setlength{\paperwidth}{210mm}
+\setlength{\paperheight}{297mm}
+\setlength{\pdfpagewidth}{210mm}
+\setlength{\pdfpageheight}{297mm}
+\fancyhfoffset{0pt}
+\fancyhead[L]{\small\sffamily\color{notesgray}Vision Encoder / ViT Details}
+\ctexset{section={format=\Large\bfseries\sffamily\color{notesblue},beforeskip=1.5ex,afterskip=1ex},subsection={format=\large\bfseries\sffamily\color{notesblue},beforeskip=1.5ex,afterskip=1ex},subsubsection={format=\normalsize\bfseries\sffamily\color{notesblue},beforeskip=1.5ex,afterskip=0.5ex}}
+\linespread{1.05}\fontsize{10.5pt}{12pt}\selectfont
+\setlength{\parskip}{0.26em}
+\setlength{\emergencystretch}{2em}
+\setlist[itemize]{leftmargin=1.7em,itemsep=0.08em,parsep=0.08em,topsep=0.22em}
+\setlength{\abovedisplayskip}{7pt plus 2pt minus 2pt}
+\setlength{\belowdisplayskip}{7pt plus 2pt minus 2pt}
+\clubpenalty=10000
+\widowpenalty=10000
+\displaywidowpenalty=10000
+
+\fancyhead[L]{\small\sffamily\color{notesgray}Vision Encoder / SigLIP 2}
+\Needspace{5\baselineskip}
+\section{SigLIP 2}
+If I had to name the most influential vision encoder of the past two years, it would be SigLIP 2.\allowbreak{} It perfectly illustrates a modern classic in visual learning: combine the best ideas from everywhere.\allowbreak{} (For a related discussion, see my earlier blog, “From VAE to RAE: Generative Latent Representations That Want It All.\allowbreak{}”)\par
+Let's focus on the widely used So400m version.\allowbreak{}\par
+\Needspace{5\baselineskip}
+\subsection{1.\allowbreak{} Architecture}
+\begin{itemize}
+\item Standard ViT, approximately 400M visual-\allowbreak{}tower parameters, 27 layers, hidden width 1152.\allowbreak{}
+\item Attention: MHA, Q/\allowbreak{}K/\allowbreak{}V =\allowbreak{} 16/\allowbreak{}16/\allowbreak{}16 heads, head dimension 72; non-\allowbreak{}causal global attention.\allowbreak{}
+\item FFN: GELU, 1152\(\rightarrow\)4304\(\rightarrow\)1152; LayerNorm and multihead attention pooling.\allowbreak{} A learnable query cross-\allowbreak{}attends to all patches in the final layer, replacing mean pooling or a CLS token.\allowbreak{}
+\item Text encoder: also 27 layers, hidden width 1152; text length 64, Gemma 256K tokenizer.\allowbreak{}
+\item The LocCa decoder, EMA teacher, and auxiliary heads are used during training and discarded afterward.\allowbreak{}
+\end{itemize}
+\Needspace{5\baselineskip}
+\subsection{2.\allowbreak{} Patches /\allowbreak{} Resolution /\allowbreak{} Position Encoding}
+\begin{itemize}
+\item Patches: initial pretraining uses 16\(\times\)16 patches and 256² images, producing 256 visual tokens; patch tokens are not compressed.\allowbreak{}
+\item Fixed resolution: Patch14 supports 224² and 384²; Patch16 supports 256², 384², and 512².\allowbreak{}
+\item Position encoding: learned absolute position embeddings, without RoPE.\allowbreak{}
+\item Dynamic resolution: NaFlex preserves the original aspect ratio as much as possible, adapts position embeddings through bilinear interpolation, and supports token budgets of 128/\allowbreak{}256/\allowbreak{}576/\allowbreak{}784/\allowbreak{}1024.\allowbreak{}
+\end{itemize}
+\begin{center}\includegraphics[width=\linewidth,height=0.30\textheight,keepaspectratio]{\detokenize{assets/siglip2.png}}\end{center}
+\Needspace{5\baselineskip}
+\subsection{3.\allowbreak{} Training}
+Here is a quick look at SigLIP 2's varied losses.\allowbreak{}\par
+\Needspace{5\baselineskip}
+\subsubsection{{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}①} SigLIP + LocCa (throughout training, loss ratio 1:1)}
+\begin{itemize}
+\item Sigmoid loss: independently classify every image-\allowbreak{}text pair in the batch; matched pairs are positive and all others negative.\allowbreak{}
+\Needspace{6\baselineskip}
+\item LocCa: add a cross-\allowbreak{}attention decoder over ViT patch features for three generation tasks:
+\begin{itemize}
+\item Image \(\rightarrow\) Caption: generate a description of the full image.\allowbreak{}
+\item Region Caption \(\rightarrow\) BBox: predict coordinates from a region description.\allowbreak{}
+\item BBox \(\rightarrow\) Region Caption: generate a region description from coordinates.\allowbreak{}
+\end{itemize}
+\item Training data: extract phrases from alt-\allowbreak{}text and use an open-\allowbreak{}vocabulary detector to generate region-\allowbreak{}box pseudo-\allowbreak{}labels automatically.\allowbreak{}
+\item Training procedure: share one ViT forward pass per image, then run three additional decoder forward passes.\allowbreak{} Captioning uses non-\allowbreak{}causal parallel token prediction with 50\% probability.\allowbreak{}
+\item The decoder is used only for training and discarded at inference.\allowbreak{}
+\end{itemize}
+\Needspace{5\baselineskip}
+\subsubsection{{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}②} SILC /\allowbreak{} TIPS (added for the final 20\%)}
+Use DINO/\allowbreak{}iBOT-\allowbreak{}style EMA teacher-\allowbreak{}student self-\allowbreak{}supervision:\par
+\begin{itemize}
+\item SILC (loss weight 1.\allowbreak{}0): the teacher sees one global view; the student sees eight local views.\allowbreak{} An additional MLP head matches global semantic distributions to improve local/\allowbreak{}global representation consistency.\allowbreak{}
+\item TIPS (loss weight 0.\allowbreak{}25): the teacher sees the complete global view.\allowbreak{} The student randomly masks 50\% of patch embeddings and predicts the teacher features at the corresponding positions, rather than reconstructing RGB.\allowbreak{}
+\item The teacher is updated by EMA of the student, without backpropagation.\allowbreak{} SigLIP/\allowbreak{}LocCa still use the original images; self-\allowbreak{}supervision uses additional augmented images.\allowbreak{}
+\end{itemize}
+The total loss for So400m during the final 20\% is:\par
+\[
+\mathcal{L}=\mathcal{L}_{\mathrm{SigLIP}}+\mathcal{L}_{\mathrm{LocCa}}+\mathcal{L}_{\mathrm{SILC}}+0.25\mathcal{L}_{\mathrm{TIPS}}
+\]
+\Needspace{5\baselineskip}
+\subsubsection{{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}③} Resolution Adaptation (two independent branches)}
+FixRes branches from the checkpoint at 95\% of training.\allowbreak{}\par
+\begin{itemize}
+\item Increase image resolution and interpolate the learned position embeddings in 2D, for example 16\(\times\)16 \(\rightarrow\) 24\(\times\)24.\allowbreak{}
+\item When switching Patch16 \(\rightarrow\) Patch14, use PI-\allowbreak{}Resize (pseudoinverse) to transform patch-\allowbreak{}embedding weights, preserving projection outputs as closely as possible.\allowbreak{}
+\item Continue the remaining 5\% of training at the target resolution with all losses, saving separate checkpoints for each resolution.\allowbreak{}
+\end{itemize}
+NaFlex branches from the 90\% checkpoint.\allowbreak{}\par
+\begin{itemize}
+\item Preserve the original aspect ratio as much as possible; resize to multiples of the patch size without forcing square images.\allowbreak{}
+\item Sample a token budget from \texttt{\{128, 256, 576, 784, 1024\}} for each batch.\allowbreak{}
+\item Bilinearly interpolate the learned 16\(\times\)16 position embeddings to the target patch grid; mask padding in attention.\allowbreak{}
+\item Extend the final-\allowbreak{}stage LR schedule by 3.\allowbreak{}75\(\times\); retain only SigLIP + LocCa, without SILC/\allowbreak{}TIPS.\allowbreak{}
+\end{itemize}
+\Needspace{5\baselineskip}
+\subsubsection{{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}④} ACID: Data-\allowbreak{}Selection Distillation for Smaller Models}
+So400m can subsequently serve as the teacher for ViT-\allowbreak{}B through ACID distillation.\allowbreak{}\par
+\begin{itemize}
+\item First train So400m on another 1B high-\allowbreak{}quality samples.\allowbreak{}
+\item Teacher and student compute learnability for candidate samples, prioritizing those the teacher has mastered but the student has not.\allowbreak{}
+\item Select 32K samples from a 64K super-\allowbreak{}batch; continue student training for 4B samples.\allowbreak{}
+\item Use only sigmoid loss, without directly distilling teacher logits or features.\allowbreak{}
+\end{itemize}
+\clearpage
+\fancyhead[L]{\small\sffamily\color{notesgray}Vision Encoder / Perception Encoder (PE-\allowbreak{}G)}
+\Needspace{5\baselineskip}
+\section{Perception Encoder (PE-\allowbreak{}G)}
+Unlike SigLIP 2's combination of multiple pretraining losses, Perception Encoder (PE) primarily relies on large-\allowbreak{}scale CLIP contrastive learning.\allowbreak{} It finds powerful general-\allowbreak{}purpose visual features in intermediate layers, then transfers those capabilities to the output layer through alignment tuning.\allowbreak{}\par
+\Needspace{5\baselineskip}
+\subsection{1.\allowbreak{} Architecture}
+\begin{itemize}
+\item Standard ViT, 1.\allowbreak{}88B visual-\allowbreak{}tower parameters, 50 layers, hidden width 1536.\allowbreak{}
+\item Attention: MHA, Q/\allowbreak{}K/\allowbreak{}V =\allowbreak{} 16/\allowbreak{}16/\allowbreak{}16 heads, head dimension 96; non-\allowbreak{}causal global attention.\allowbreak{}
+\item FFN: 1536\(\rightarrow\)8960\(\rightarrow\)1536; eight-\allowbreak{}head attention pooling, without a CLS token.\allowbreak{}
+\item Text encoder: 0.\allowbreak{}47B, 24 layers, hidden width 1280; 20 heads, FFN width 5120, text length 72; image-\allowbreak{}text contrastive dimension 1280.\allowbreak{}
+\end{itemize}
+\Needspace{5\baselineskip}
+\subsection{2.\allowbreak{} Patches /\allowbreak{} Resolution /\allowbreak{} Position Encoding}
+\begin{itemize}
+\item Patches: 14\(\times\)14; the final 448² images correspond to 1024 visual tokens, without compressing patch features.\allowbreak{}
+\item Position encoding: 2D RoPE + learned absolute position embeddings; the latter support interpolation.\allowbreak{}
+\item Progressive resolution: 98²\(\rightarrow\)154²\(\rightarrow\)224²\(\rightarrow\)336²\(\rightarrow\)448².\allowbreak{}
+\end{itemize}
+\Needspace{5\baselineskip}
+\subsection{3.\allowbreak{} Training}
+\Needspace{5\baselineskip}
+\subsubsection{{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}①} CLIP Contrastive Pretraining}
+\begin{itemize}
+\item Loss: conventional CLIP bidirectional softmax contrastive loss, rather than SigLIP's sigmoid loss.\allowbreak{}
+\item Data: 5.\allowbreak{}4B image-\allowbreak{}text pairs filtered by MetaCLIP, totaling 86B samples seen.\allowbreak{}
+\item Optimization: LAMB, batch size 131K, LR 2e-\allowbreak{}3, 656K training steps.\allowbreak{}
+\item Augmentation: random crop (0.\allowbreak{}08-1.\allowbreak{}0), color jitter, and horizontal flip.\allowbreak{}
+\item Mask regularization: duplicate an additional 1/\allowbreak{}16 of the batch, randomly mask 40\% of patches, and align masked/\allowbreak{}unmasked features through cosine similarity, with a gradient path separate from the CLIP loss.\allowbreak{}
+\end{itemize}
+\Needspace{5\baselineskip}
+\subsubsection{{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}②} Video Finetuning}
+\begin{itemize}
+\item First cool down using 50M images, then finetune on 22M recaptioned videos.\allowbreak{}
+\item Video captions: combine video-\allowbreak{}captioner output, frame captions, and metadata, then integrate them with Llama 3.\allowbreak{}3 70B.\allowbreak{}
+\item Uniformly sample eight frames per video, encode each with the same ViT, and mean-\allowbreak{}pool them into a video embedding.\allowbreak{}
+\item Continue using CLIP contrastive loss, without adding temporal attention.\allowbreak{}
+\end{itemize}
+\Needspace{5\baselineskip}
+\subsubsection{{\fontspec[Path=/System/Library/Fonts/Supplemental/,FontIndex=6]{Songti.ttc}③} Intermediate Layers}
+PE-\allowbreak{}G's best visual features are not necessarily in its final layer:\par
+\begin{itemize}
+\item OCR: layer 38; VQA: layer 47.\allowbreak{}
+\item Detection /\allowbreak{} depth: layer 39; tracking: layer 32.\allowbreak{}
+\item Global tokens emerge from layer 33.\allowbreak{} The final 18 layers increasingly aggregate global semantics, causing some loss of local spatial information.\allowbreak{}
+\end{itemize}
+The authors therefore branch PE-\allowbreak{}core-\allowbreak{}G into two alignment variants:\par
+\begin{itemize}
+\item PE-\allowbreak{}lang-\allowbreak{}G: retain the first 47 layers and discard the last three; attach Llama 3.\allowbreak{}2 3B + an MLP projector, then jointly finetune with CE loss on 70M multimodal samples to strengthen language understanding, including OCR/\allowbreak{}VQA.\allowbreak{}
+\item PE-\allowbreak{}spatial-\allowbreak{}G: jointly distill semantic features from layer 41 of frozen PE-\allowbreak{}core-\allowbreak{}G and spatial correspondences from SAM 2.\allowbreak{}1 mask logits.\allowbreak{} Train on 300M samples with 75\% masking, giving the final layer stronger dense features.\allowbreak{}
+\end{itemize}
+\clearpage
+\fancyhead[L]{\small\sffamily\color{notesgray}Vision Encoder / Encoder-\allowbreak{}Free}
+\Needspace{5\baselineskip}
+\section{Encoder-\allowbreak{}Free}
+Finally, let me put in a word for the Encoder-\allowbreak{}Free approach we have been advocating! Excitingly, while I was writing this blog, Microsoft released its latest 3T model, MAI-\allowbreak{}Base-\allowbreak{}2, an Encoder-\allowbreak{}Free VLM!\par
+The core idea is to remove the separate deep vision encoder and use a lightweight patchify projection for the input.\allowbreak{} Examples include NEO, NEO-\allowbreak{}ov, SenseNova-\allowbreak{}U1, SenseNova-\allowbreak{}U1.\allowbreak{}5, Gemma4-\allowbreak{}12B, and Inking.\allowbreak{} I also recommend exploring Haiwen Diao's publication list: a long-\allowbreak{}time pioneer of native modeling.\allowbreak{}\par
+What are the benefits?\par
+\begin{center}\includegraphics[width=\linewidth,height=0.30\textheight,keepaspectratio]{\detokenize{assets/encoder-free.png}}\end{center}
+My earlier blog, “Why Do We Want to Remove the Vision Encoder?” (you can find it on my homepage), also discussed a few small infrastructure benefits.\allowbreak{} Ultimately, my taste has always been “removing inductive bias as much as possible to let the model architecture take its natural and intended form.\allowbreak{}” If it works without the encoder, why not?\par
+\end{document}
