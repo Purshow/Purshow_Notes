@@ -11,6 +11,7 @@ Personal research notes.
 - `Muon/CN`, `Muon/EN`: From Norms to Optimizers: SGD and Muon
 - `OPD/CN`, `OPD/EN`: On-Policy Distillation
 - `Ngram_Embedding/CN`, `Ngram_Embedding/EN`: Sparse Vocab Embeddings: Over Encoding, PLE, and Engram
+- `Scaling_Laws/CN`: Scaling Laws — From Loss Prediction to Prescriptive Pretraining
 - `Video_VAE/CN`, `Video_VAE/EN`: VAEs for Video Generation Models
 - `Vision_Encoder/CN`, `Vision_Encoder/EN`: Vision Encoder Architectures and Multimodal Training
 - `WAM/CN`, `WAM/EN`: World Action Models
