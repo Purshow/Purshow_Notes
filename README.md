@@ -10,6 +10,7 @@ Personal research notes.
 - `MoE/CN`, `MoE/EN`: Mixture of Experts
 - `Muon/CN`, `Muon/EN`: From Norms to Optimizers: SGD and Muon
 - `OPD/CN`, `OPD/EN`: On-Policy Distillation
+- `Scaling_Law/CN`, `Scaling_Law/EN`: Scaling Law: From Compute Allocation to Hyperparameter Prediction
 - `Ngram_Embedding/CN`, `Ngram_Embedding/EN`: Sparse Vocab Embeddings: Over Encoding, PLE, and Engram
 - `Video_VAE/CN`, `Video_VAE/EN`: VAEs for Video Generation Models
 - `Vision_Encoder/CN`, `Vision_Encoder/EN`: Vision Encoder Architectures and Multimodal Training
@@ -26,6 +27,7 @@ bash Video_VAE/build.sh
 bash Vision_Encoder/build.sh
 bash Muon/CN/build.sh
 bash Muon/EN/build.sh
+bash Scaling_Law/build.sh
 (cd Attention/CN && xelatex -interaction=nonstopmode -halt-on-error Attention.tex && xelatex -interaction=nonstopmode -halt-on-error Attention.tex)
 (cd Attention/EN && xelatex -interaction=nonstopmode -halt-on-error Attention_EN.tex && xelatex -interaction=nonstopmode -halt-on-error Attention_EN.tex)
 (cd MoE/CN && xelatex -shell-escape -interaction=nonstopmode -halt-on-error MoE_CN.tex)
